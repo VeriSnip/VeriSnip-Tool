@@ -13,19 +13,7 @@ module MyReg #(
     input  wire [DATA_W-1:0] data_i,
     output reg  [DATA_W-1:0] data_o
 );
-  wire data_e;
 
-  assign data_e = en_i & cke_i;
+  `include "reg_data.vs" // en rst
 
-  always @(posedge clk_i, posedge arst_i) begin
-    if (arst_i) begin
-      data_o <= RST_VAL;
-    end else if (rst_i) begin
-      data_o <= RST_VAL;
-    end else if (data_e) begin
-      data_o <= data_i;
-    end else begin
-      data_o <= data_o;
-    end
-  end
 endmodule

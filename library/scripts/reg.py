@@ -19,7 +19,7 @@ def write_vs(string="", file_name="reg.vs"):
         file.write(string)
 
 def create_vs():
-    vs_content =      f"  // {reg_name} register\n"
+    vs_content =      f"// {reg_name} register\n"
     vs_content +=      "  always @(posedge clk_i, posedge arst_i) begin\n"
     vs_content +=      "    if (arst_i) begin\n"
     vs_content +=     f"      {data_q} <= 'd{rst_val};\n"
