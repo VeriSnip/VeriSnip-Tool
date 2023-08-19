@@ -4,9 +4,10 @@ My Verilog Template is a project that I will be working on my free time. The pro
 ### Index
 1. [How to use MyVT](#how-to-use-myvt)
 2. [Development Environment](#development-environment)
-3. [Scripts](#scripts)
-    1. [VTbuild.py](#vtbuild)
-    2. [VTmodule.py](#vtmodule)
+3. [VTbuild.py](#vtbuild)
+4. [Scripts](#scripts)
+    1. [VTcolor.py](#vtcolors)
+    1. [VTmodule.py](#vtmodule)
 4. [Glossary](#glossary)
 5. [Contributing](#contributing)
 6. [Credits](#credits)
@@ -14,7 +15,8 @@ My Verilog Template is a project that I will be working on my free time. The pro
 ## How to use MyVT
 Using "MyVT" will create a build directory where all the RTL code needed to build the core can be found. The first step to do so is calling the "VTbuild" script.
 ### Calling VTbuild
-The main Makefile of the project should define the project name and call the "VTbuild" script. The project name will be use to find the core top module, as it should be the "project name".\[v/vs\] and the top test-bench which should be "project name"\_tb\_.\[v/vs/cpp\].
+The main Makefile of the project should define the project name and call the "VTbuild" script. The project name will be use to find the core top module, as it should be the "project name".\[v/vs\] and the top test-bench which should be "project name"\_tb\_.\[v/vs/cpp\].  
+See the usage section of [VTbuild.py](#vtbuild) for more information on how to call it.
 
 ### Using or Creating scripts
 Users can create custom scripts that generate ".vs" files or Verilog modules or use those that are already existent. Any scripting language can be used.  All scripts which generate Verilog code (be it modules or ".vs" files) are independent from "VTbuild". Therefor, "VTbuild" only calls the scripts and does not import them.
@@ -25,16 +27,28 @@ Users can create custom scripts that generate ".vs" files or Verilog modules or 
 ### Nix
 Run `nix-shell` with the "shell.nix" of this repository to enter a development environment that automatically installs and manages the tools commonly needed by the projects.
 
-## Scripts
-...
+## VTbuild
+The **VTbuild** script is the core functions of the MyVT-Tool. This script creates the build directory with the verilog modules and headers used by the projects hardware. The code under the `./build` directory is the one that should be used in simulation and when synthesizing for the FPGA.
 
-### VTbuild
-- "VTbuild" starts by looking for the Verilog top module. The script initially only knows that it needs the top module file. It then starts to:
-	-  First, locate where the files needed are and copy them to the build directory. If the files do not exist it will look for and call the scripts witch can generate them.
-	- Second, the script finds all the Verilog modules or ".vs" files included in the files it needs.
-	- Third, repeat the first and second step until no additional files are added.
+### Usage
+**VTbuild** must receive at least one argument.  
+The first argument can be: 
+> --help -> shows the help text  
+  --clean -> removes the build directory  
+  top_module -> creates the build directory with top_module as the main RTL design.
 
-#### Calling the scripts
+Example of calling **VTbuild**:  
+`python3 ./VTbuild top_module`  
+or  
+`./VTbuild --help`
+
+### Code structure
+**VTbuild** code is distinctly divided into three stages.  
+- in **1st stage** the function `find_vs_scripts_and_verilog()` finds all existing verilog modules, headers, snippets and scripts under the current directory.
+- the **2nd stage** is where it finds the verilog modules and snippets needed by the core. If a verilog module or a snippet does not exist it will try to generate them. The generated snippets should be stored under the `./rtl/generated` directory. The function called for this stage is `verilog_fetch()`.
+- during the **3rd stage** all verilog snippet files included are substituted for its content. Those files are then stored under the `./build` directory.
+
+#### **2nd stage** - details
 - When calling scripts to generate ".vs" priority is always given to scripts with the full name of the file. If there is no script curresponding to the ".vs" name look for a script that currsponds only to the inicial part of the name. Example:
 	- in `include "io_modules.vs"` look for `VTio.py` or `io.py` if `io_modules.py` does not exist.
 - When calling scripts that generate modules the script should have the name of the module.
@@ -42,12 +56,18 @@ Run `nix-shell` with the "shell.nix" of this repository to enter a development e
 - When there are two or more scripts with the same name a warning should be printed and the script with the closest directory path should be used. 
 - All files and scripts should only be looked for from the base directory of the project, unless specified otherwise in a custom script.
 
-#### Copy files
+#### **3rd stage** - details
 - all files which are generated should have a copy in the "aux" directory
 - "VTbuild" substitutes the ".vs" and copies the modules needed to the build directory, after finding or generating all modules and ".vs" files.
 
-#### bla
 
+
+## Scripts
+This section of the README contains information about the scripts present under the `./library/scripts` directory.
+
+### VTcolors
+This script defines the colors that should be used when printing error, warning or successful messages.  
+It defines the `print_coloured()` function and some variables that allow to modify the text printed to the console.
 
 ### VTmodule
 This script defines a python class which may be used by the user. This class should help create a systematic way of generating repetitive Verilog code in different components.
