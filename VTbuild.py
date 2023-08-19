@@ -11,12 +11,13 @@ program = "VTbuild"
 
 # Displays help information about how to use the program.
 def help_build():
-    text = f''' {program} must receive at least one argument.
-That argument can be one of the following: 
+    text = f'''
+{program} must receive at least one argument.
+The first argument can be: 
     --help -> shows this text
     --clean -> removes the build directory
     top_module -> creates the build directory with top_module as the main RTL design.
-    '''
+'''
     print_color(INFO, text)
 
 
