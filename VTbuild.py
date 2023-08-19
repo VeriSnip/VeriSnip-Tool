@@ -9,30 +9,25 @@ from VTcolors import *
 program = "VTbuild"
 
 
-# Finds the filename in the list of files.
-# Args:
-#   filename: The filename to find.
-#   files_list: The list of files to search.
-# Returns:
-#   The first matching file, or None if the file is not found.
-def find_filename_in_list(filename, files_list):
-    found_files = [file for file in files_list if os.path.basename(file) == filename]
-
-    if found_files:
-        return found_files[0]  # Return the first matching file
-    else:
-        return None
+# Displays help information about how to use the program.
+def help_build():
+    text = f''' {program} must receive at least one argument.
+That argument can be one of the following: 
+    --help -> shows this text
+    --clean -> removes the build directory
+    top_module -> creates the build directory with top_module as the main RTL design.
+    '''
+    print_color(INFO, text)
 
 
-# Creates a directory at the specified path.
-# Args:
-#   path: The path of the directory to be created.
-def create_directory(path):
+# Cleans the build directory by removing it and its contents.
+def clean_build():
+    directory_to_remove = f"{current_directory}/build"
     try:
-        os.makedirs(path)
-        print(f"Directory '{path}' created successfully.")
+        shutil.rmtree(directory_to_remove)
+        print_color(OK, f"Directory '{directory_to_remove}' and its contents removed successfully.")
     except OSError as e:
-        print_color(ERROR, f"creating directory '{path}': {e}")
+        print_color(ERROR, f"removing directory '{directory_to_remove}' and its contents: {e}")
 
 
 # Finds all verilog snippets, modules, and scripts under the given directory.
@@ -77,7 +72,7 @@ def find_vs_scripts_and_verilog(directory):
 # This function first checks if the verilog file exists. If it does not exist,
 # the function checks if a snippet file with the same name exists. If a snippet
 # file exists, the function generates the verilog file from the snippet file.
-def find_or_generate_verilog(verilog_file):
+def verilog_fetch(verilog_file):
     module_list = [verilog_file]
     with open(verilog_file, 'r') as file:
         for line in file:
@@ -114,6 +109,19 @@ def search_script(string_name):
     return script_path, script_arg
 
 
+# Builds the Verilog file by substituting included .vs files and writing to build directory.
+# Args:
+#   verilog_file: The Verilog file to build.
+def verilog_build(verilog_file):
+    verilog_content = ""
+    verilog_content = substitute_vs_file(verilog_file)
+    build_dir = f"{current_directory}/build/rtl"
+    file_name = os.path.basename(verilog_file)
+    create_directory(build_dir)
+    with open(f"{build_dir}/{file_name}", 'w') as file:
+        file.write(verilog_content)
+
+
 # Recursively substitutes included .vs files in the source file content.
 # Args:
 #   source_file: The source file containing potential `include directives.
@@ -133,38 +141,30 @@ def substitute_vs_file(source_file):
     return new_content
 
 
-# Builds the Verilog file by substituting included .vs files and writing to build directory.
+# Finds the filename in the list of files.
 # Args:
-#   verilog_file: The Verilog file to build.
-def verilog_build(verilog_file):
-    verilog_content = ""
-    verilog_content = substitute_vs_file(verilog_file)
-    build_dir = f"{current_directory}/build/rtl"
-    file_name = os.path.basename(verilog_file)
-    create_directory(build_dir)
-    with open(f"{build_dir}/{file_name}", 'w') as file:
-        file.write(verilog_content)
+#   filename: The filename to find.
+#   files_list: The list of files to search.
+# Returns:
+#   The first matching file, or None if the file is not found.
+def find_filename_in_list(filename, files_list):
+    found_files = [file for file in files_list if os.path.basename(file) == filename]
+
+    if found_files:
+        return found_files[0]  # Return the first matching file
+    else:
+        return None
 
 
-# Displays help information about how to use the program.
-def help_build():
-    text = f''' {program} must receive at least one argument.
-That argument can be one of the following: 
-    top_module -> creates the build directory with top_module as the main RTL design.
-    --clean -> removes the build directory
-    --help -> shows this text
-    '''
-    print_color(INFO, text)
-
-
-# Cleans the build directory by removing it and its contents.
-def clean_build():
-    directory_to_remove = f"{current_directory}/build"
+# Creates a directory at the specified path.
+# Args:
+#   path: The path of the directory to be created.
+def create_directory(path):
     try:
-        shutil.rmtree(directory_to_remove)
-        print(f"Directory '{directory_to_remove}' and its contents removed successfully.")
+        os.makedirs(path)
+        print_color(OK, f"Directory '{path}' created successfully.")
     except OSError as e:
-        print_color(ERROR, f"removing directory '{directory_to_remove}' and its contents: {e}")
+        print_color(WARNING, f"Failed to create directory: {e}")
 
 
 # Check if this script is called directly
@@ -177,6 +177,6 @@ if __name__ == "__main__":
     else:
         vs_files, script_files, verilog_files = find_vs_scripts_and_verilog(current_directory)
         top_module = find_filename_in_list(f"{sys.argv[1]}.v", verilog_files)  # Replace with your Verilog file name
-        module_list = find_or_generate_verilog(top_module)
+        module_list = verilog_fetch(top_module)
         for file in module_list:
             verilog_build(file)
