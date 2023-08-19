@@ -1,0 +1,6 @@
+# Ignored directories
+*__pycache__
+build
+
+# Ignored files
+*.vs
