@@ -24,11 +24,21 @@ The first argument can be:
 # Cleans the build directory by removing it and its contents.
 def clean_build():
     directory_to_remove = f"{current_directory}/build"
+    remove_directory(directory_to_remove)
+    if sys.argv[2] == "all":
+        directory_to_remove = f"{current_directory}/hardware/generated"
+        remove_directory(directory_to_remove)
+
+
+# Removes a directory and its contents.
+# Args:
+#   directory_to_remove: The directory to remove.
+def remove_directory(directory_to_remove):
     try:
         shutil.rmtree(directory_to_remove)
         print_coloured(OK, f"Directory '{directory_to_remove}' and its contents removed successfully.")
     except OSError as e:
-        print_coloured(ERROR, f"removing directory '{directory_to_remove}' and its contents: {e}")
+        print_coloured(WARNING, f"removing directory '{directory_to_remove}' and its contents: {e}")
 
 
 # Finds all verilog snippets, modules, and scripts under the given directory.
@@ -100,7 +110,7 @@ def analyse_file(file_path, script_files, verilog_files):
     module_matches = re.findall(module_pattern, content)
     for module in module_matches:
         module_name = module[0].split()[0]
-        if module_name is not "module":
+        if module_name != "module":
             module_path = find_or_generate(f"{module_name}.v", script_files, verilog_files, module)
             additional_sources.append(module_path)
 
@@ -108,14 +118,14 @@ def analyse_file(file_path, script_files, verilog_files):
     header_matches = re.findall(header_pattern, content)
     for header in header_matches:
         header_name = header[0].split()[0]
-        header_path = find_filename_in_list(f"{header_name}.vh", script_files, verilog_files, header)
+        header_path = find_or_generate(f"{header_name}.vh", script_files, verilog_files, header)
         additional_sources.append(header_path)
 
     snippet_pattern = r'`include "(.*?)\.vs"(.*)'
     snippet_matches = re.findall(snippet_pattern, content)
     for snippet in snippet_matches:
         snippet_name = snippet[0].split()[0]
-        snippet_path = find_filename_in_list(f"{snippet_name}.vs", script_files, verilog_files, snippet)
+        snippet_path = find_or_generate(f"{snippet_name}.vs", script_files, verilog_files, snippet)
         additional_sources.append(snippet_path)
 
     return additional_sources
@@ -145,7 +155,7 @@ def find_or_generate(file_name, script_files, verilog_files, match):
         file_path = f"{current_directory}/hardware/generated/{file_name}"
         shutil.move(file_name, file_path)
     else:
-        print_coloured(INFO, f"File {file_name} was not generated since it already exists under the current directory..")
+        print_coloured(INFO, f"File {file_name} was not generated since it already exists under the current directory.")
 
     return file_path
 
@@ -157,14 +167,15 @@ def find_or_generate(file_name, script_files, verilog_files, match):
 # Returns:
 #    tuple: A tuple containing the file path and the remaining string words.
 def find_most_common_prefix(file_name, file_list):
-    input_words = file_name.split("_")
+    filename_without_extension = os.path.splitext(file_name)[0]
+    input_words = filename_without_extension.split("_")
     max_common_words = 0
     most_common_file = ""
     uncommon_words = ""
 
     for file_path in file_list:
-        filename = os.path.basename(file_path)
-        filename_without_extension = os.path.splitext(filename)[0]
+        file_name = os.path.basename(file_path)
+        filename_without_extension = os.path.splitext(file_name)[0]
         common_words = 0
         string_words = filename_without_extension.split("_")
 
