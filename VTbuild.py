@@ -84,7 +84,7 @@ def verilog_fetch(verilog_file):
                 arguments_list = arguments.split()
                 vs_path = find_filename_in_list(f"{file_name}.vs", vs_files)
                 if vs_path is None:
-                    script_path, script_arg = search_script(file_name)
+                    script_path, script_arg = find_most_common_prefix(file_name, script_files)
                     if script_path is not None:
                         script_arguments = ['python', script_path, script_arg] + arguments_list
                         subprocess.run(script_arguments)
@@ -92,22 +92,37 @@ def verilog_fetch(verilog_file):
     return module_list
 
 
-# Searches for a script file based on the string name.
+# Searches for the file with the most common prefix in a file list.
 # Args:
-#   string_name: The string name to search for.
+#   file_name (str): A string equivalent to the file name to search for.
+#   file_list (list): A list of script file names. 
 # Returns:
-#   A tuple containing the script path and the script argument.
-def search_script(string_name):
-    script_arg = ""
-    script_path = find_filename_in_list(f"{string_name}.py", script_files)
-    if script_path is None:
-        string_parts = string_name.split('_')
-        first_string = string_parts[0]
-        script_arg = '_'.join(string_parts[1:])
-        script_path = find_filename_in_list(f"{first_string}.py", script_files)
-        if script_path is None:
-            print(f"Unable to find or generate '{string_name}.vs'.")
-    return script_path, script_arg
+#    tuple: A tuple containing the file path and the remaining string words.
+def find_most_common_prefix(file_name, file_list):
+    input_words = file_name.split("_")
+    max_common_words = 0
+    most_common_file = ""
+    uncommon_words = ""
+
+    for file_path in file_list:
+        filename = os.path.basename(file_path)
+        filename_without_extension = os.path.splitext(filename)[0]
+        common_words = 0
+        string_words = filename_without_extension.split("_")
+
+        if len(input_words) > len(string_words):
+            for i in range(len(string_words)):
+                if input_words[i] == string_words[i]:
+                    common_words += 1
+                else:
+                    break
+
+        if common_words > max_common_words:
+            max_common_words = common_words
+            uncommon_words = '_'.join(input_words[common_words:])
+            most_common_file = file_path
+
+    return most_common_file, uncommon_words
 
 
 # Builds the Verilog file by substituting included .vs files and writing to build directory.
