@@ -7,6 +7,7 @@ import shutil
 from VTcolors import *
 
 program = "VTbuild"
+DEBUG_MODE = 1
 
 
 # Displays help information about how to use the program.
@@ -18,7 +19,7 @@ The first argument can be:
     --clean -> removes the build directory
     top_module -> creates the build directory with top_module as the main RTL design.
 '''
-    print_color(INFO, text)
+    print_coloured(INFO, text)
 
 
 # Cleans the build directory by removing it and its contents.
@@ -26,9 +27,9 @@ def clean_build():
     directory_to_remove = f"{current_directory}/build"
     try:
         shutil.rmtree(directory_to_remove)
-        print_color(OK, f"Directory '{directory_to_remove}' and its contents removed successfully.")
+        print_coloured(OK, f"Directory '{directory_to_remove}' and its contents removed successfully.")
     except OSError as e:
-        print_color(ERROR, f"removing directory '{directory_to_remove}' and its contents: {e}")
+        print_coloured(ERROR, f"removing directory '{directory_to_remove}' and its contents: {e}")
 
 
 # Finds all verilog snippets, modules, and scripts under the given directory.
@@ -36,7 +37,7 @@ def clean_build():
 #   directory: The directory to search.
 # Returns:
 #   A lists of all verilog snippets, modules, and scripts found in the directory.
-def find_vs_scripts_and_verilog(directory):
+def find_verilog_and_scripts(directory):
     vs_files = []
     script_files = []
     verilog_files = []
@@ -54,13 +55,9 @@ def find_vs_scripts_and_verilog(directory):
                 elif extension == ".v" or extension == ".vh":
                     verilog_files.append(os.path.join(root, file))
 
-    print("Found snippet files:")
-    print(vs_files)
-    print("Found script files:")
-    print(script_files)
-    print("Found verilog files:")
-    print(verilog_files)
-    print()
+    if DEBUG_MODE:
+        print_coloured(DEBUG, f"Found verilog files: {', '.join(vs_files+verilog_files)}. \n")
+        print_coloured(DEBUG, f"Found script files: {', '.join(script_files)}. \n")
 
     return vs_files, script_files, verilog_files
 
@@ -178,9 +175,9 @@ def find_filename_in_list(filename, files_list):
 def create_directory(path):
     try:
         os.makedirs(path)
-        print_color(OK, f"Directory '{path}' created successfully.")
+        print_coloured(OK, f"Directory '{path}' created successfully.")
     except OSError as e:
-        print_color(WARNING, f"Failed to create directory: {e}")
+        print_coloured(WARNING, f"Failed to create directory: {e}")
 
 
 # Check if this script is called directly
@@ -191,7 +188,7 @@ if __name__ == "__main__":
     elif sys.argv[1] == "--clean":
         clean_build()
     else:
-        vs_files, script_files, verilog_files = find_vs_scripts_and_verilog(current_directory)
+        vs_files, script_files, verilog_files = find_verilog_and_scripts(current_directory)
         top_module = find_filename_in_list(f"{sys.argv[1]}.v", verilog_files)  # Replace with your Verilog file name
         module_list = verilog_fetch(top_module)
         for file in module_list:
