@@ -50,7 +50,7 @@ def find_verilog_and_scripts(directory):
     script_files = []
     verilog_files = []
     excluded_files = ['LICENSE', '.gitignore', '.gitmodules']
-    verilog_extensions = [".v", ".vh", ".vs"]
+    verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
     script_extensions  = ["", ".py", ".sh"]
 
     for root, dirs, files in os.walk(directory, topdown=True):
@@ -77,7 +77,7 @@ def find_verilog_and_scripts(directory):
 # Returns:
 #   A list of all verilog files.
 def verilog_fetch(verilog_files, script_files):
-    top_module = find_filename_in_list(f"{sys.argv[1]}.v", verilog_files)
+    top_module = find_or_generate(f"{sys.argv[1]}.v", script_files, verilog_files, [""])
     sources_list = [top_module]
     generated_path = f"{current_directory}/hardware/generated"
     create_directory(generated_path)
@@ -93,7 +93,7 @@ def verilog_fetch(verilog_files, script_files):
     return sources_list
 
 
-# Analyze a verilog file for module, header, and snippet references.
+# Analyze a verilog file for module instantiations or includes.
 # Args:
 #   file_path (str): Path to the verilog file.
 #   script_files (list): List of script file paths.
@@ -106,30 +106,16 @@ def analyse_file(file_path, script_files, verilog_files):
     with open(file_path, 'r') as file:
         content = file.read()
     
-    module_pattern = r'(.*?)\(([\s\S]*?)\);'
-    module_matches = re.findall(module_pattern, content)
-    for module in module_matches:
-        module_name = module[0].split()[0]
-        if module_name != "module":
-            module_path = find_or_generate(f"{module_name}.v", script_files, verilog_files, module)
-            additional_sources.append(module_path)
-
-    header_pattern = r'`include "(.*?)\.vh"(.*)'
-    header_matches = re.findall(header_pattern, content)
-    for header in header_matches:
-        header_name = header[0].split()[0]
-        header_path = find_or_generate(f"{header_name}.vh", script_files, verilog_files, header)
-        additional_sources.append(header_path)
-
-    snippet_pattern = r'`include "(.*?)\.vs"(.*)'
-    snippet_matches = re.findall(snippet_pattern, content)
-    for snippet in snippet_matches:
-        snippet_name = snippet[0].split()[0]
-        snippet_path = find_or_generate(f"{snippet_name}.vs", script_files, verilog_files, snippet)
-        additional_sources.append(snippet_path)
+    module_pattern = r'\s*(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n'
+    include_pattern = r'`include "(.*?)" \\\*([\s\S]*?)\*/|`include "(.*?)"([^\n]*)'
+    for pattern in [module_pattern, include_pattern]:
+        matches = re.findall(pattern, content)
+        for item in matches:
+            item_name = item[0].split()[0]
+            include_path = find_or_generate(item_name, script_files, verilog_files, item)
+            additional_sources.append(include_path)
 
     return additional_sources
-
 
 # Find or generate a file based on given conditions.
 # Args:
@@ -140,8 +126,14 @@ def analyse_file(file_path, script_files, verilog_files):
 # Returns:
 #   str: Path to the found or generated file.
 def find_or_generate(file_name, script_files, verilog_files, match):
-    file_path = find_filename_in_list(file_name, verilog_files)
-    
+    _, extension = os.path.splitext(file_name)
+    if extension == "" and file_name != "module":
+        file_path = find_filename_in_list(f"{file_name}.v", verilog_files)
+        if file_path is None:
+            file_path = find_filename_in_list(f"{file_name}.sv", verilog_files)
+    else:
+        file_path = find_filename_in_list(file_name, verilog_files)
+
     if file_path is None:
         arguments_list = []
         if file_name.endswith(".vs"):
