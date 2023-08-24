@@ -54,8 +54,8 @@ def update_module_text(module_text, prefix):
             updated_line = f"    .{port_name}({port_value}),{comment_part}"
             module_ports.append(updated_line)
 
-    module_parameters[-1] = module_parameters[-1].replace(",", "").strip()
-    module_ports[-1] = module_parameters[-1].replace(",", "").strip()
+    module_parameters[-1] = module_parameters[-1].replace(",", "")
+    module_ports[-1] = module_parameters[-1].replace(",", "")
     parameters_text = "\n".join(module_parameters)
     ports_text = "\n".join(module_ports)
 
