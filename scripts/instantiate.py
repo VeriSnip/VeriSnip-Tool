@@ -19,6 +19,8 @@ prefix = None
 suffix = None
 custom_ports = {}
 
+PROGRAM = "instantiate.py"
+
 
 def update_module_text(module_text, prefix):
     global parameters_text, ports_text
@@ -59,7 +61,7 @@ def update_module_text(module_text, prefix):
 
 
 def extract_comment(line):
-    match = re.match(r'(.*?)\s*//\s*(.*)', line)
+    match = re.match(r"(.*?)\s*//\s*(.*)", line)
     if match:
         variable_part = match.group(1).strip()
         comment_part = match.group(2).strip()

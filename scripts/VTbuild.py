@@ -8,25 +8,25 @@ import sys
 
 from VTcolors import *
 
-program = "VTbuild"
+PROGRAM = "VTbuild"
 DEBUG_MODE = False  # Set to True for debugging
 if "--debug" in sys.argv:
     debug_index = sys.argv.index("--debug")
     sys.argv.pop(debug_index)
     DEBUG_MODE = True
-    print_coloured(DEBUG, "mode activated.")
+    print_coloured(DEBUG, "mode activated.", PROGRAM)
 
 
 # Displays help information about how to use the program.
 def help_build():
     text = f"""
-{program} must receive at least one argument.
+{PROGRAM} must receive at least one argument.
 The first argument can be: 
     --help -> shows this text
     --clean -> removes the build directory
     top_module -> creates the build directory with top_module as the main RTL design.
 """
-    print_coloured(INFO, text)
+    print_coloured(INFO, text, PROGRAM)
 
 
 # Cleans the build directory by removing it and its contents.
@@ -47,10 +47,13 @@ def remove_directory(directory_to_remove):
         print_coloured(
             OK,
             f"Directory '{directory_to_remove}' and its contents removed successfully.",
+            PROGRAM,
         )
     except OSError as e:
         print_coloured(
-            WARNING, f"removing directory '{directory_to_remove}' and its contents: {e}"
+            WARNING,
+            f"removing directory '{directory_to_remove}' and its contents: {e}",
+            PROGRAM,
         )
 
 
@@ -81,12 +84,12 @@ def find_verilog_and_scripts(directory):
                     verilog_files.append(os.path.join(root, file))
 
     if DEBUG_MODE:
-        print_coloured(DEBUG, f"Found verilog files:")
+        print_coloured(DEBUG, f"Found verilog files:", PROGRAM)
         for verilog_file in verilog_files:
-            print_coloured(DEBUG, verilog_file)
-        print_coloured(DEBUG, f"Found script files:")
+            print_coloured(DEBUG, verilog_file, PROGRAM)
+        print_coloured(DEBUG, f"Found script files:", PROGRAM)
         for script_file in script_files:
-            print_coloured(DEBUG, script_file)
+            print_coloured(DEBUG, script_file, PROGRAM)
 
     return script_files, verilog_files
 
@@ -123,13 +126,17 @@ def fetch_rtl(verilog_files, script_files):
 # Returns:
 #   list: List of additional source file paths.
 def fetch_testbench(verilog_files, script_files):
-    main_module = sys.argv[1]
-    print_coloured(INFO, f"Main module: {main_module}")
     sources_list = []
     sources_list, verilog_files = find_or_generate(
-        [f"{main_module}_tb"], script_files, verilog_files, sources_list
+        [sys.argv[1]], script_files, verilog_files, sources_list
     )
-    print_coloured(INFO, f"Testbench: {sources_list}")
+    main_module = sources_list[0]
+    print_coloured(INFO, f"Main module: {main_module}", PROGRAM)
+    sources_list = []
+    sources_list, verilog_files = find_or_generate(
+        [f"{sys.argv[1]}_tb"], script_files, verilog_files, sources_list
+    )
+    print_coloured(INFO, f"Testbench: {sources_list}", PROGRAM)
     i = 0
 
     while i < len(sources_list):
@@ -138,7 +145,6 @@ def fetch_testbench(verilog_files, script_files):
             verilog_file, script_files, verilog_files, sources_list
         )
         if main_module in sources_list:
-            print("entrou")
             sources_list.remove(main_module)
         i = i + 1
 
@@ -204,7 +210,9 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
         sources_list.append(file_path)
         if extension == "":
             file_name = f"{file_name}.[v/sv]"
-        print_coloured(INFO, f"File {file_name} exists under the current directory.")
+        print_coloured(
+            INFO, f"File {file_name} exists under the current directory.", PROGRAM
+        )
 
     return sources_list, verilog_files
 
@@ -234,10 +242,10 @@ def move_to_generated_dir(
             sources_list.append(file_dir)
 
     if verilog_files_found == []:
-        print_coloured(WARNING, f"{script_path} generated no Verilog files.")
+        print_coloured(WARNING, f"{script_path} generated no Verilog files.", PROGRAM)
     else:
         print_coloured(
-            INFO, f"{script_path} generated {', '.join(verilog_files_found)}."
+            INFO, f"{script_path} generated {', '.join(verilog_files_found)}.", PROGRAM
         )
 
     return sources_list, verilog_files
@@ -309,7 +317,7 @@ def substitute_vs_file(source_file, sources_list):
                     new_content += substitute_vs_file(vs_file_path, sources_list)
                 else:
                     warning_text = f"File {vs_file} does not exist to substitute."
-                    print_coloured(WARNING, warning_text)
+                    print_coloured(WARNING, warning_text, PROGRAM)
                     new_content += f"  // {warning_text}\n"
             else:
                 new_content += line
@@ -328,7 +336,9 @@ def find_filename_in_list(filename, files_list):
         if os.path.basename(file) == filename:
             if found_files != None:
                 print_coloured(
-                    WARNING, f"Found more than one directory with file {filename}."
+                    WARNING,
+                    f"Found more than one directory with file {filename}.",
+                    PROGRAM,
                 )
             found_files = file
 
@@ -344,10 +354,10 @@ def find_filename_in_list(filename, files_list):
 def create_directory(path):
     try:
         os.makedirs(path)
-        print_coloured(OK, f"Created directory '{path}'.")
+        print_coloured(OK, f"Created directory '{path}'.", PROGRAM)
     except OSError as e:
         if DEBUG_MODE:
-            print_coloured(DEBUG, f"Did not create directory: {e}")
+            print_coloured(DEBUG, f"Did not create directory: {e}", PROGRAM)
 
 
 # Check if this script is called directly
