@@ -84,7 +84,7 @@ def create_vs(content):
 {ports_text}
   );
 """
-    write_vs(instantiation, f"reg_{module}_{module_name}.vs")
+    write_vs(instantiation, f"instantiate_{module}_{module_name}.vs")
 
 
 def parse_arguments():
