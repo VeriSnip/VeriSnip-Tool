@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-import sys, re, os
-import subprocess
+import os
+import re
 import shutil
+import subprocess
+import sys
 
 from VTcolors import *
 
@@ -14,15 +16,16 @@ if "--debug" in sys.argv:
     DEBUG_MODE = True
     print_coloured(DEBUG, "mode activated.")
 
+
 # Displays help information about how to use the program.
 def help_build():
-    text = f'''
+    text = f"""
 {program} must receive at least one argument.
 The first argument can be: 
     --help -> shows this text
     --clean -> removes the build directory
     top_module -> creates the build directory with top_module as the main RTL design.
-'''
+"""
     print_coloured(INFO, text)
 
 
@@ -41,9 +44,14 @@ def clean_build():
 def remove_directory(directory_to_remove):
     try:
         shutil.rmtree(directory_to_remove)
-        print_coloured(OK, f"Directory '{directory_to_remove}' and its contents removed successfully.")
+        print_coloured(
+            OK,
+            f"Directory '{directory_to_remove}' and its contents removed successfully.",
+        )
     except OSError as e:
-        print_coloured(WARNING, f"removing directory '{directory_to_remove}' and its contents: {e}")
+        print_coloured(
+            WARNING, f"removing directory '{directory_to_remove}' and its contents: {e}"
+        )
 
 
 # Finds all verilog snippets, modules, and scripts under the given directory.
@@ -54,12 +62,16 @@ def remove_directory(directory_to_remove):
 def find_verilog_and_scripts(directory):
     script_files = []
     verilog_files = []
-    excluded_files = ['LICENSE', '.gitignore', '.gitmodules']
+    excluded_files = ["LICENSE", ".gitignore", ".gitmodules"]
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
-    script_extensions  = ["", ".py", ".sh"]
+    script_extensions = ["", ".py", ".sh"]
 
     for root, dirs, files in os.walk(directory, topdown=True):
-        dirs[:] = [d for d in dirs if ('.git' not in d) and (d != 'build') and (d != 'hardware/generated')]
+        dirs[:] = [
+            d
+            for d in dirs
+            if (".git" not in d) and (d != "build") and (d != "hardware/generated")
+        ]
         for file in files:
             filename, extension = os.path.splitext(file)
             if filename not in excluded_files:
@@ -87,14 +99,18 @@ def find_verilog_and_scripts(directory):
 #   A list of all verilog files used by the core.
 def verilog_fetch(verilog_files, script_files):
     sources_list = []
-    sources_list, verilog_files = find_or_generate([sys.argv[1]], script_files, verilog_files, sources_list)
+    sources_list, verilog_files = find_or_generate(
+        [sys.argv[1]], script_files, verilog_files, sources_list
+    )
     generated_path = f"{current_directory}/hardware/generated"
     create_directory(generated_path)
     i = 0
 
-    while(i<len(sources_list)):
+    while i < len(sources_list):
         verilog_file = sources_list[i]
-        sources_list, verilog_files = analyse_file(verilog_file, script_files, verilog_files, sources_list)
+        sources_list, verilog_files = analyse_file(
+            verilog_file, script_files, verilog_files, sources_list
+        )
         i = i + 1
 
     return sources_list
@@ -108,17 +124,19 @@ def verilog_fetch(verilog_files, script_files):
 # Returns:
 #   list: List of additional source file paths.
 def analyse_file(file_path, script_files, verilog_files, sources_list):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         content = file.read()
-    
-    module_pattern = r'(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n'
+
+    module_pattern = r"(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
     include_pattern = r'`include "(.*?)"([^\n]*)'
     include_pattern_alternative = r'`include "(.*?)" \\\*([\s\S]*?)\*/'
     for pattern in [module_pattern, include_pattern]:
         matches = re.findall(pattern, content)
         for item in matches:
             if not item[0].startswith("module "):
-                sources_list, verilog_files = find_or_generate(item, script_files, verilog_files, sources_list)
+                sources_list, verilog_files = find_or_generate(
+                    item, script_files, verilog_files, sources_list
+                )
 
     return sources_list, verilog_files
 
@@ -148,12 +166,16 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
             arguments_list = str_list[1].split()
         script_path, script_arg = find_most_common_prefix(file_name, script_files)
         if script_path != "":
-            script_arguments = ['python', script_path, script_arg] + arguments_list
+            script_arguments = ["python", script_path, script_arg] + arguments_list
             subprocess.run(script_arguments)
-            sources_list, verilog_files = move_to_generated_dir(script_path, file_name, current_directory, sources_list, verilog_files)
+            sources_list, verilog_files = move_to_generated_dir(
+                script_path, file_name, current_directory, sources_list, verilog_files
+            )
     else:
         sources_list.append(file_path)
-        print_coloured(INFO, f"File {file_name} already exists under the current directory.")
+        print_coloured(
+            INFO, f"File {file_name} already exists under the current directory."
+        )
 
     return sources_list, verilog_files
 
@@ -161,10 +183,12 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
 # Moves Verilog files generated by a script under the current directory to the generated directory.
 # Args:
 #   script_path (str): A string equivalent to the script path executed.
-#   current_directory (str): A string equivalent to the current directory. 
-# Returns: 
+#   current_directory (str): A string equivalent to the current directory.
+# Returns:
 #   generated_dir (str): Directory of the generated files.
-def move_to_generated_dir(script_path, file_name, current_directory, sources_list, verilog_files):
+def move_to_generated_dir(
+    script_path, file_name, current_directory, sources_list, verilog_files
+):
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
     verilog_files_found = []
     generated_dir = os.path.join(current_directory, "hardware/generated/")
@@ -179,20 +203,21 @@ def move_to_generated_dir(script_path, file_name, current_directory, sources_lis
             shutil.move(file_path, file_dir)
         if filename == file_name or filename_no_ext == file_name:
             sources_list.append(file_path)
-            
 
     if verilog_files_found == []:
         print_coloured(WARNING, f"{script_path} generated no Verilog files.")
     else:
-        print_coloured(INFO, f"{script_path} generated {', '.join(verilog_files_found)}.")
-    
+        print_coloured(
+            INFO, f"{script_path} generated {', '.join(verilog_files_found)}."
+        )
+
     return sources_list, verilog_files
 
 
 # Searches for the file with the most common prefix in a file list.
 # Args:
 #   file_name (str): A string equivalent to the file name to search for.
-#   file_list (list): A list of script file names. 
+#   file_list (list): A list of script file names.
 # Returns:
 #    tuple: A tuple containing the file path and the remaining string words.
 def find_most_common_prefix(file_name, file_list):
@@ -217,7 +242,7 @@ def find_most_common_prefix(file_name, file_list):
 
         if common_words > max_common_words:
             max_common_words = common_words
-            uncommon_words = '_'.join(input_words[common_words:])
+            uncommon_words = "_".join(input_words[common_words:])
             most_common_file = file_path
 
     return most_common_file, uncommon_words
@@ -234,7 +259,7 @@ def verilog_build(sources_list):
             verilog_content = ""
             verilog_content = substitute_vs_file(verilog_file, sources_list)
             file_name = os.path.basename(verilog_file)
-            with open(f"{build_dir}/{file_name}", 'w') as file:
+            with open(f"{build_dir}/{file_name}", "w") as file:
                 file.write(verilog_content)
 
 
@@ -245,13 +270,13 @@ def verilog_build(sources_list):
 #   The new content with included .vs files substituted.
 def substitute_vs_file(source_file, sources_list):
     new_content = ""
-    with open(source_file, 'r') as file:
+    with open(source_file, "r") as file:
         for line in file:
             match = re.search(r'`include "(.*?)\.vs"(.*)', line)
             if match:
                 vs_file = match.group(1) + ".vs"
                 vs_file_path = find_filename_in_list(vs_file, sources_list)
-                if(vs_file_path!=None):
+                if vs_file_path != None:
                     new_content += substitute_vs_file(vs_file_path, sources_list)
                 else:
                     warning_text = f"File {vs_file} does not exist to substitute."
@@ -273,7 +298,9 @@ def find_filename_in_list(filename, files_list):
     for file in files_list:
         if os.path.basename(file) == filename:
             if found_files != None:
-                print_coloured(WARNING, f"Found more than one directory with file {filename}.")
+                print_coloured(
+                    WARNING, f"Found more than one directory with file {filename}."
+                )
             found_files = file
 
     if found_files:
@@ -290,13 +317,14 @@ def create_directory(path):
         os.makedirs(path)
         print_coloured(OK, f"Created directory '{path}'.")
     except OSError as e:
-        if DEBUG_MODE: print_coloured(DEBUG, f"Did not create directory: {e}")
+        if DEBUG_MODE:
+            print_coloured(DEBUG, f"Did not create directory: {e}")
 
 
 # Check if this script is called directly
 if __name__ == "__main__":
     current_directory = os.getcwd()
-    if len(sys.argv)<2 or sys.argv[1] == "--help":
+    if len(sys.argv) < 2 or sys.argv[1] == "--help":
         help_build()
     elif sys.argv[1] == "--clean":
         clean_build()
