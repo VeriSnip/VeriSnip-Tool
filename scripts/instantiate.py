@@ -26,16 +26,18 @@ def update_module_text(module_text, prefix):
     module_ports = []
     for line in module_text.split("\n"):
         if line.strip().startswith("parameter"):
-            parts = line.strip().split()
+            variable_part, comment_part = extract_comment(line)
+            parts = variable_part.split()
             parameter_name = parts[-3]
             if parameter_name in custom_ports:
                 parameter_value = custom_ports[parameter_name]
             else:
                 parameter_value = parts[-1].rstrip(",")
-            updated_line = f"    .{parameter_name}({parameter_value}),"
+            updated_line = f"    .{parameter_name}({parameter_value}),{comment_part}"
             module_parameters.append(updated_line)
         elif line.strip().startswith("input") or line.strip().startswith("output"):
-            parts = line.strip().split()
+            variable_part, comment_part = extract_comment(line)
+            parts = variable_part.split()
             port_name = parts[-1].rstrip(",")
             if port_name in custom_ports:
                 port_value = custom_ports[port_name]
@@ -47,13 +49,24 @@ def update_module_text(module_text, prefix):
                 else:
                     port = port_name
                 port_value = f"{prefix}{port}{suffix}"
-            updated_line = f"    .{port_name}({port_value}),"
+            updated_line = f"    .{port_name}({port_value}),{comment_part}"
             module_ports.append(updated_line)
 
     module_parameters[-1] = module_parameters[-1].rstrip(",")
     module_ports[-1] = module_ports[-1].rstrip(",")
     parameters_text = "\n".join(module_parameters)
     ports_text = "\n".join(module_ports)
+
+
+def extract_comment(line):
+    match = re.match(r'(.*?)\s*//\s*(.*)', line)
+    if match:
+        variable_part = match.group(1).strip()
+        comment_part = match.group(2).strip()
+        comment_part = f" // {comment_part}"
+        return variable_part, comment_part
+    else:
+        return line.strip(), ""
 
 
 def write_vs(string="", file_name="reg.vs"):
