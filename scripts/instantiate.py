@@ -1,55 +1,159 @@
 #!/usr/bin/env python3
 
+# Should be called as "`include "instantiate_{module}_{module_name}.vs" // prefix="prefix" suffix="suffix""
+
+import sys, os, re
+from VTbuild import (
+    find_verilog_and_scripts,
+    find_or_generate,
+    find_filename_in_list,
+    substitute_vs_file,
+)
+from VTcolors import *
+
+module = ""
+module_name = ""
+parameters_text = ""
+ports_text = ""
+prefix = None
+suffix = None
+custom_ports = {}
+
+
 def update_module_text(module_text, prefix):
-    updated_lines = []
-
-    for line in module_text.split('\n'):
-        if line.strip().startswith('parameter'):
+    global parameters_text, ports_text
+    module_parameters = []
+    module_ports = []
+    for line in module_text.split("\n"):
+        if line.strip().startswith("parameter"):
             parts = line.strip().split()
-            parameter_value = parts[-1].rstrip(',')
             parameter_name = parts[-3]
+            if parameter_name in custom_ports:
+                parameter_value = custom_ports[parameter_name]
+            else:
+                parameter_value = parts[-1].rstrip(",")
             updated_line = f"    .{parameter_name}({parameter_value}),"
-            updated_lines.append(updated_line)
-        elif line.strip().startswith('input') or line.strip().startswith('output'):
+            module_parameters.append(updated_line)
+        elif line.strip().startswith("input") or line.strip().startswith("output"):
             parts = line.strip().split()
-            port_name = parts[-1].rstrip(',')
-            updated_line = f"    .{port_name}({prefix}_{port_name}),"
-            updated_lines.append(updated_line)
-        else:
-            updated_lines.append(line)
+            port_name = parts[-1].rstrip(",")
+            if port_name in custom_ports:
+                port_value = custom_ports[port_name]
+            else:
+                if port_name.endswith("_o"):
+                    port = port_name.replace("_o", "")
+                elif port_name.endswith("_i"):
+                    port = port_name.replace("_i", "")
+                else:
+                    port = port_name
+                port_value = f"{prefix}{port}{suffix}"
+            updated_line = f"    .{port_name}({port_value}),"
+            module_ports.append(updated_line)
 
-    updated_module_text = '\n'.join(updated_lines)
-    return updated_module_text
+    module_parameters[-1] = module_parameters[-1].rstrip(",")
+    module_ports[-1] = module_ports[-1].rstrip(",")
+    parameters_text = "\n".join(module_parameters)
+    ports_text = "\n".join(module_ports)
 
-original_text = """
-module myuart #(
-    parameter integer ADDR_W = 16,
-    parameter integer DATA_W = 32,
-    parameter integer TX_FIFO_DEPTH = 16,  // in bytes
-    parameter integer RX_FIFO_DEPTH = 16  // in bytes
-) (
-    // ... ports ...
 
-    input  wire rx_i,  // Receiver input
-    output wire tx_o,  // Transmitter output
+def write_vs(string="", file_name="reg.vs"):
+    with open(file_name, "w") as file:
+        file.write(string)
 
-    output wire interrupt_o  // interrupt/event output
-);
-"""
 
-prefix = "rcv"
-updated_text = update_module_text(original_text, prefix)
-
-uut_instantiation = f"""
-  // Instantiate the Unit Under Test (UUT)
-  myuart #(
-    .ADDR_W(16),
-    .DATA_W(32),
-    .TX_FIFO_DEPTH(16),  // in bytes
-    .RX_FIFO_DEPTH(16)  // in bytes
-  ) {prefix} (
-{updated_text}
+def create_vs(content):
+    update_module_text(content, prefix)
+    instantiation = f"""
+  // Instantiation of {module} the Unit Under Test (UUT)
+  {module} #(
+{parameters_text}
+  ) {module_name} (
+{ports_text}
   );
 """
+    write_vs(instantiation, f"reg_{module}_{module_name}.vs")
 
-print(uut_instantiation)
+
+def parse_arguments():
+    global module, module_name, prefix, suffix
+
+    if len(sys.argv) < 2:
+        exit(1)
+    module = sys.argv[1].split("_")[0]
+    module_name = sys.argv[1][len(module) + 1 :]
+
+    for arg in sys.argv[2:]:
+        # Split the argument into variable name and value
+        name_value = arg.split("=")
+        if len(name_value) == 2:
+            name, value = name_value
+            custom_ports[name] = value
+
+    if "prefix" in custom_ports:
+        prefix = custom_ports["prefix"]
+    if "suffix" in custom_ports:
+        suffix = custom_ports["suffix"]
+
+    if prefix is None:
+        prefix = f"{module_name}_"
+    if suffix is None:
+        suffix = ""
+
+
+def module_definition_content(current_directory):
+    sources_list = []
+
+    script_files, verilog_files = find_verilog_and_scripts(current_directory)
+    sources_list, verilog_files = find_or_generate(
+        [module], script_files, verilog_files, sources_list
+    )
+
+    if sources_list == []:
+        print_coloured(ERROR, f"Module {module} not found")
+        exit(1)
+
+    with open(sources_list[0], "r") as file:
+        content = file.read()
+
+    module_text = ""
+    module_pattern = r"module(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
+    module_matches = re.findall(module_pattern, content)
+
+    if module_matches[0][0].strip() != module:
+        print_coloured(
+            ERROR, f"Module {module} not equivalent to {module_matches[0][0].strip()}."
+        )
+        exit(1)
+
+    module_text = module_matches[0][1]
+    include_pattern = r'`include "(.*?)"([^\n]*)'
+    include_matches = re.findall(include_pattern, module_text)
+    for include in include_matches:
+        sources_list, verilog_files = find_or_generate(
+            include, script_files, verilog_files, sources_list
+        )
+
+    new_content = ""
+    for line in module_text.split("\n"):
+        include = re.search(r'`include "(.*?)\.vs"(.*)', line)
+        if include:
+            vs_file = include.group(1) + ".vs"
+            vs_file_path = find_filename_in_list(vs_file, sources_list)
+            if vs_file_path != None:
+                new_content += substitute_vs_file(vs_file_path, sources_list)
+            else:
+                warning_text = f"File {vs_file} does not exist to substitute."
+                print_coloured(WARNING, warning_text)
+                new_content += f"  // {warning_text}"
+        else:
+            new_content += line + "\n"
+
+    return new_content
+
+
+# Check if this script is called directly
+if __name__ == "__main__":
+    current_directory = os.getcwd()
+    parse_arguments()
+    content = module_definition_content(current_directory)
+    create_vs(content)
