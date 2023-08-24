@@ -29,10 +29,29 @@ class VTmodule:
         mmio_file.close()
 
     # define a public method that adds a mmio register to the list of mmio registers, it receives the information needed to initialize a mmio_reg object
-    def add_mmio(self, name, size, address, reset_value, description, readable, writable, use_enable, use_reset):
+    def add_mmio(
+        self,
+        name,
+        size,
+        address,
+        reset_value,
+        description,
+        readable,
+        writable,
+        use_enable,
+        use_reset,
+    ):
         # create a mmio_reg object with the received information
         mmio_reg = self.__mmio_reg(
-            name, size, address, reset_value, description, readable, writable, use_enable, use_reset
+            name,
+            size,
+            address,
+            reset_value,
+            description,
+            readable,
+            writable,
+            use_enable,
+            use_reset,
         )
         # add the mmio_reg object to the list of mmio registers
         self.__mmio_regs.append(mmio_reg)
@@ -78,15 +97,15 @@ class VTmodule:
 
         # define a public method that returns a string with the Verilog code of the register
         def get_verilog(self):
-            verilog =      f"`include \"reg_{self.__name}.vs\" // rst_val={self.__reset_value}"
-            if (self.__use_reset):
+            verilog = f'`include "reg_{self.__name}.vs" // rst_val={self.__reset_value}'
+            if self.__use_reset:
                 verilog += f" rst"
-            if (self.__use_enable):
+            if self.__use_enable:
                 verilog += f" en"
-            verilog += "\n"            
+            verilog += "\n"
             # return the Verilog code
             return verilog
-        
+
         # define a public method that returns the name of the register
         def get_name(self):
             return self.__name

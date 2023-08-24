@@ -15,4 +15,4 @@ UNDERLINE = "\033[4m"
 #    modifier: The text modifier.
 #    string: The string to print.
 def print_coloured(modifier, string):
-    print(modifier+string+NORMAL)
+    print(modifier + string + NORMAL)

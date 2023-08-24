@@ -14,27 +14,30 @@ data_r = None
 data_e = None
 rst_val = None
 
+
 def write_vs(string="", file_name="reg.vs"):
     with open(file_name, "w") as file:
         file.write(string)
 
+
 def create_vs():
-    vs_content =      f"  // {reg_name} register\n"
-    vs_content +=      "  always @(posedge clk_i, posedge arst_i) begin\n"
-    vs_content +=      "    if (arst_i) begin\n"
-    vs_content +=     f"      {data_q} <= 'd{rst_val};\n"
-    if (rst):
+    vs_content = f"  // {reg_name} register\n"
+    vs_content += "  always @(posedge clk_i, posedge arst_i) begin\n"
+    vs_content += "    if (arst_i) begin\n"
+    vs_content += f"      {data_q} <= 'd{rst_val};\n"
+    if rst:
         vs_content += f"    end else if ({data_r}) begin\n"
         vs_content += f"      {data_q} <= 'd{rst_val};\n"
-    if (en):
+    if en:
         vs_content += f"    end else if ({data_e}) begin\n"
     else:
-        vs_content +=  "    end else begin\n"
-    vs_content +=     f"      {data_q} <= {data_d};\n"
-    vs_content +=      "    end\n"
-    vs_content +=      "  end\n"
+        vs_content += "    end else begin\n"
+    vs_content += f"      {data_q} <= {data_d};\n"
+    vs_content += "    end\n"
+    vs_content += "  end\n"
 
     write_vs(vs_content, f"reg_{reg_name}.vs")
+
 
 def parse_arguments():
     global reg_name, en, rst, data_q, data_d, data_r, data_e, rst_val
