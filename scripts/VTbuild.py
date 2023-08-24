@@ -97,7 +97,7 @@ def find_verilog_and_scripts(directory):
 #   script_files (list): List of script file paths.
 # Returns:
 #   A list of all verilog files used by the core.
-def verilog_fetch(verilog_files, script_files):
+def fetch_rtl(verilog_files, script_files):
     sources_list = []
     sources_list, verilog_files = find_or_generate(
         [sys.argv[1]], script_files, verilog_files, sources_list
@@ -111,6 +111,35 @@ def verilog_fetch(verilog_files, script_files):
         sources_list, verilog_files = analyse_file(
             verilog_file, script_files, verilog_files, sources_list
         )
+        i = i + 1
+
+    return sources_list
+
+
+# Analyze a list of Verilog files for module instantiations or includes.
+# Args:
+#   verilog_files (list): List of Verilog file paths.
+#   script_files (list): List of script file paths.
+# Returns:
+#   list: List of additional source file paths.
+def fetch_testbench(verilog_files, script_files):
+    main_module = sys.argv[1]
+    print_coloured(INFO, f"Main module: {main_module}")
+    sources_list = []
+    sources_list, verilog_files = find_or_generate(
+        [f"{main_module}_tb"], script_files, verilog_files, sources_list
+    )
+    print_coloured(INFO, f"Testbench: {sources_list}")
+    i = 0
+
+    while i < len(sources_list):
+        verilog_file = sources_list[i]
+        sources_list, verilog_files = analyse_file(
+            verilog_file, script_files, verilog_files, sources_list
+        )
+        if main_module in sources_list:
+            print("entrou")
+            sources_list.remove(main_module)
         i = i + 1
 
     return sources_list
@@ -173,9 +202,9 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
             )
     else:
         sources_list.append(file_path)
-        print_coloured(
-            INFO, f"File {file_name} already exists under the current directory."
-        )
+        if extension == "":
+            file_name = f"{file_name}.[v/sv]"
+        print_coloured(INFO, f"File {file_name} exists under the current directory.")
 
     return sources_list, verilog_files
 
@@ -192,17 +221,17 @@ def move_to_generated_dir(
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
     verilog_files_found = []
     generated_dir = os.path.join(current_directory, "hardware/generated/")
-    file_path = os.path.join(current_directory, f"hardware/generated/{file_name}")
 
     for filename in os.listdir(current_directory):
         filename_no_ext, extension = os.path.splitext(filename)
         file_dir = os.path.join(generated_dir, filename)
         if extension in verilog_extensions:
             verilog_files.append(file_dir)
+            verilog_files_found.append(file_dir)
             file_path = os.path.join(current_directory, filename)
             shutil.move(file_path, file_dir)
         if filename == file_name or filename_no_ext == file_name:
-            sources_list.append(file_path)
+            sources_list.append(file_dir)
 
     if verilog_files_found == []:
         print_coloured(WARNING, f"{script_path} generated no Verilog files.")
@@ -248,11 +277,11 @@ def find_most_common_prefix(file_name, file_list):
     return most_common_file, uncommon_words
 
 
-# Builds the Verilog files by substituting included .vs files and writes them to the build directory.
+# Build Verilog files and create a build directory.
 # Args:
-#   sources_list (list): List of Verilog files to build.
-def verilog_build(sources_list):
-    build_dir = f"{current_directory}/build/rtl"
+#   sources_list (list): List of Verilog source file paths.
+#   build_dir (str): Path to the build directory.
+def verilog_build(sources_list, build_dir):
     create_directory(build_dir)
     for verilog_file in sources_list:
         if not verilog_file.endswith(".vs"):
@@ -281,7 +310,7 @@ def substitute_vs_file(source_file, sources_list):
                 else:
                     warning_text = f"File {vs_file} does not exist to substitute."
                     print_coloured(WARNING, warning_text)
-                    new_content += f"  // {warning_text}"
+                    new_content += f"  // {warning_text}\n"
             else:
                 new_content += line
     return new_content
@@ -330,5 +359,7 @@ if __name__ == "__main__":
         clean_build()
     else:
         script_files, verilog_files = find_verilog_and_scripts(current_directory)
-        sources_list = verilog_fetch(verilog_files, script_files)
-        verilog_build(sources_list)
+        sources_list = fetch_rtl(verilog_files, script_files)
+        verilog_build(sources_list, f"{current_directory}/build/rtl")
+        sources_list = fetch_testbench(verilog_files, script_files)
+        verilog_build(sources_list, f"{current_directory}/build/testbench")
