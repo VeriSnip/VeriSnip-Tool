@@ -1,3 +1,6 @@
+import inspect
+import os
+
 # Based on ANSI escape code
 OKBLUE = "\033[94m"  # Blue
 INFO = f"\033[96mInfo"  # Cyan
@@ -14,5 +17,8 @@ UNDERLINE = "\033[4m"
 #  Args:
 #    modifier: The text modifier.
 #    string: The string to print.
-def print_coloured(modifier, string, program=""):
-    print(f"{modifier} ({program}): {string}{NORMAL}")
+def print_coloured(modifier, string):
+    frame = inspect.currentframe().f_back
+    calling_script = inspect.getframeinfo(frame).filename
+    script_name = os.path.basename(calling_script)
+    print(f"{modifier} ({script_name}): {string}{NORMAL}")
