@@ -24,10 +24,10 @@ def create_vs():
     vs_content = f"  // {reg_name} register\n"
     vs_content += "  always @(posedge clk_i, posedge arst_i) begin\n"
     vs_content += "    if (arst_i) begin\n"
-    vs_content += f"      {data_q} <= 'd{rst_val};\n"
+    vs_content += f"      {data_q} <= {rst_val};\n"
     if rst:
         vs_content += f"    end else if ({data_r}) begin\n"
-        vs_content += f"      {data_q} <= 'd{rst_val};\n"
+        vs_content += f"      {data_q} <= {rst_val};\n"
     if en:
         vs_content += f"    end else if ({data_e}) begin\n"
     else:
@@ -59,7 +59,7 @@ def parse_arguments():
         elif arg.startswith("data_e="):
             data_e = arg.split("=")[1]
         elif arg.startswith("rst_val="):
-            rst_val = int(arg.split("=")[1])
+            rst_val = arg.split("=")[1]
 
     if data_q is None:
         data_q = f"{reg_name}_q"
@@ -70,7 +70,10 @@ def parse_arguments():
     if data_e is None:
         data_e = f"{reg_name}_e"
     if rst_val is None:
-        rst_val = 0
+        rst_val = "'d0'"
+    else:
+        if rst_val.isdigit():
+            rst_val = f"'d{rst_val}"    \
 
 
 # Check if this script is called directly
