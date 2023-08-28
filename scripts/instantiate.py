@@ -29,12 +29,12 @@ def update_module_text(module_text, prefix):
     for line in module_text.split("\n"):
         if line.strip().startswith("parameter"):
             variable_part, comment_part = extract_comment(line)
-            parts = variable_part.split()
-            parameter_name = parts[-3]
+            parts = variable_part.split("=")
+            parameter_name = parts[0].strip().split()[-1]
             if parameter_name in custom_ports:
                 parameter_value = custom_ports[parameter_name]
             else:
-                parameter_value = parts[-1].rstrip(",")
+                parameter_value = parts[1].strip().rstrip(",")
             updated_line = f"    .{parameter_name}({parameter_value}),{comment_part}"
             module_parameters.append(updated_line)
         elif line.strip().startswith("input") or line.strip().startswith("output"):
