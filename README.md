@@ -1,4 +1,4 @@
-## Overview
+## MyVT-Overview
 My Verilog Template is a project that I will be working on my free time. The project aim is to compile and elaborate Verilog modules. The Verilog cores are written in traditional Verilog and might use `include "file" to add automaticaly generated code.
 
 ### Index
@@ -70,22 +70,20 @@ The "MyLibrary" directory contains hardware Verilog modules, snippets and script
 This section of the README contains information about the scripts present under the `./library/scripts` directory.  
 Read more about each script in the [README.md on the scripts directory](https://github.com/PedroAntunes178/MyVT-Tool/tree/main/MyLibrary/scripts/README.md).
 
-
-
-
 ## Glossary
 - vt - Verilog Template
 - vs - Verilog Snippet
 ### Verilog code style
 - \_i - input
 - \_o - output
-- \_r - registed
-- \_e - enable
 - \_n - next
+- \_q - registered
+- \_r - reset
+- \_e - enable
 - ...
 
 ## Contributing
-People may contribute with automatic generated verilog scripts. These scripts should be under the hardware/scripts directory. Furthermore, when adding a script the contributer must as well write a corresponding section on the README. That section should explain the core generated and how the script should be used. The section structure must follow the other scripts sections structures.
+People may contribute with automatic generated verilog scripts. These scripts should be under the hardware/scripts directory. Furthermore, when adding a script the contributor must as well write a corresponding section on the README. That section should explain the core generated and how the script should be used. The section structure must follow the other scripts sections structures.
 
 ## Credits
 This project idea came to me while I was working at IObundle. IObundle was developing a similar open-source tool called python-setup. 

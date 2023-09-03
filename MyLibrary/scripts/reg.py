@@ -9,7 +9,7 @@ reg_name = ""
 en = False
 rst = False
 data_q = None
-data_d = None
+data_n = None
 data_r = None
 data_e = None
 rst_val = None
@@ -32,7 +32,7 @@ def create_vs():
         vs_content += f"    end else if ({data_e}) begin\n"
     else:
         vs_content += "    end else begin\n"
-    vs_content += f"      {data_q} <= {data_d};\n"
+    vs_content += f"      {data_q} <= {data_n};\n"
     vs_content += "    end\n"
     vs_content += "  end\n"
 
@@ -40,7 +40,7 @@ def create_vs():
 
 
 def parse_arguments():
-    global reg_name, en, rst, data_q, data_d, data_r, data_e, rst_val
+    global reg_name, en, rst, data_q, data_n, data_r, data_e, rst_val
 
     if len(sys.argv) < 2:
         exit(1)
@@ -52,8 +52,8 @@ def parse_arguments():
     for arg in sys.argv[2:]:
         if arg.startswith("data_q="):
             data_q = arg.split("=")[1]
-        elif arg.startswith("data_d="):
-            data_d = arg.split("=")[1]
+        elif arg.startswith("data_n="):
+            data_n = arg.split("=")[1]
         elif arg.startswith("data_r="):
             data_r = arg.split("=")[1]
         elif arg.startswith("data_e="):
@@ -63,8 +63,8 @@ def parse_arguments():
 
     if data_q is None:
         data_q = f"{reg_name}_q"
-    if data_d is None:
-        data_d = f"{reg_name}_d"
+    if data_n is None:
+        data_n = f"{reg_name}_n"
     if data_r is None:
         data_r = f"{reg_name}_r"
     if data_e is None:
