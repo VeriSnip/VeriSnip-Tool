@@ -5,9 +5,8 @@ My Verilog Template is a project that I will be working on my free time. The pro
 1. [How to use MyVT](#how-to-use-myvt)
 2. [Development Environment](#development-environment)
 3. [VTbuild.py](#vtbuild)
-4. [Scripts](#scripts)
-    1. [VTcolor.py](#vtcolors)
-    1. [VTmodule.py](#vtmodule)
+4. [VTcolor.py](#vtcolors)
+5. [MyLibrary](#mylibrary)
 4. [Glossary](#glossary)
 5. [Contributing](#contributing)
 6. [Credits](#credits)
@@ -60,20 +59,19 @@ or
 - all files which are generated should have a copy in the "aux" directory
 - "VTbuild" substitutes the ".vs" and copies the modules needed to the build directory, after finding or generating all modules and ".vs" files.
 
-
-
-## Scripts
-This section of the README contains information about the scripts present under the `./library/scripts` directory.
-
-### VTcolors
+## VTcolors
 This script defines the colors that should be used when printing error, warning or successful messages.  
 It defines the `print_coloured()` function and some variables that allow to modify the text printed to the console.
 
-### VTmodule
-This script defines a python class which may be used by the user. This class should help create a systematic way of generating repetitive Verilog code in different components.
-#### Class variables
-#### Class methods
-#### Example
+## MyLibrary
+The "MyLibrary" directory contains hardware Verilog modules, snippets and scripts that might be commonly reused.
+
+### Scripts
+This section of the README contains information about the scripts present under the `./library/scripts` directory.  
+Read more about each script in the [README.md on the scripts directory](https://github.com/PedroAntunes178/MyVT-Tool/tree/main/MyLibrary/scripts/README.md).
+
+
+
 
 ## Glossary
 - vt - Verilog Template
