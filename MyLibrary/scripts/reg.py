@@ -70,7 +70,7 @@ def parse_arguments():
     if data_e is None:
         data_e = f"{reg_name}_e"
     if rst_val is None:
-        rst_val = "'d0'"
+        rst_val = "'d0"
     else:
         if rst_val.isdigit():
             rst_val = f"'d{rst_val}"    \

@@ -33,7 +33,7 @@ The first argument can be:
 def clean_build():
     directory_to_remove = f"{current_directory}/build"
     remove_directory(directory_to_remove)
-    if sys.argv[2] == "all":
+    if (len(sys.argv) > 2) and (sys.argv[2] == "all"):
         directory_to_remove = f"{current_directory}/hardware/generated"
         remove_directory(directory_to_remove)
 
@@ -161,9 +161,9 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
         content = file.read()
 
     module_pattern = r"(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
-    include_pattern = r'`include "(.*?)"([^\n]*)'
-    include_pattern_alternative = r'`include "(.*?)" \\\*([\s\S]*?)\*/'
-    for pattern in [module_pattern, include_pattern]:
+    include_pattern = r'`include "(.*?)"(?!\s*?/\*)(.*?)\n'
+    include_with_multi_line_comment = r'`include "(.*?)"\s*/\*([\s\S]*?)\*/\n'
+    for pattern in [module_pattern, include_pattern, include_with_multi_line_comment]:
         matches = re.findall(pattern, content)
         for item in matches:
             if not item[0].startswith("module "):
@@ -208,9 +208,7 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
         sources_list.append(file_path)
         if extension == "":
             file_name = f"{file_name}.[v/sv]"
-        print_coloured(
-            INFO, f"File {file_name} exists under the current directory."
-        )
+        print_coloured(INFO, f"File {file_name} exists under the current directory.")
 
     return sources_list, verilog_files
 
@@ -305,20 +303,30 @@ def verilog_build(sources_list, build_dir):
 #   The new content with included .vs files substituted.
 def substitute_vs_file(source_file, sources_list):
     new_content = ""
+    on_comment = False
+
     with open(source_file, "r") as file:
         for line in file:
-            match = re.search(r'`include "(.*?)\.vs"(.*)', line)
-            if match:
-                vs_file = match.group(1) + ".vs"
-                vs_file_path = find_filename_in_list(vs_file, sources_list)
-                if vs_file_path != None:
-                    new_content += substitute_vs_file(vs_file_path, sources_list)
+            if not on_comment:
+                match = re.search(r'`include "(.*?)\.vs"(.*)', line)
+                if match:
+                    vs_file = match.group(1) + ".vs"
+                    vs_file_path = find_filename_in_list(vs_file, sources_list)
+
+                    if vs_file_path:
+                        new_content += substitute_vs_file(vs_file_path, sources_list)
+                    else:
+                        warning_text = f"File {vs_file} does not exist to substitute."
+                        print_coloured(WARNING, warning_text)
+                        new_content += f"  // {warning_text}\n"
+                    if "/*" in line:
+                        on_comment = True
                 else:
-                    warning_text = f"File {vs_file} does not exist to substitute."
-                    print_coloured(WARNING, warning_text)
-                    new_content += f"  // {warning_text}\n"
+                    new_content += line
             else:
-                new_content += line
+                if "*/" in line:
+                    on_comment = False
+
     return new_content
 
 
