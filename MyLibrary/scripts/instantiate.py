@@ -81,7 +81,7 @@ def write_vs(string="", file_name="reg.vs"):
 def create_vs(content):
     update_module_text(content, prefix)
     if parameters != "":
-        parameters_text = f"#(\n{parameters}\n) "
+        parameters_text = f"#(\n{parameters}\n  ) "
     else:
         parameters_text = ""
     instantiation = f"""
