@@ -60,26 +60,38 @@ def remove_directory(directory_to_remove):
 #   directory: The directory to search.
 # Returns:
 #   A lists of all verilog snippets, modules, and scripts found in the directory.
-def find_verilog_and_scripts(directory):
+def find_verilog_and_scripts(current_directory):
     script_files = []
     verilog_files = []
+    search_directories = []
     excluded_files = ["LICENSE", ".gitignore", ".gitmodules"]
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
     script_extensions = ["", ".py", ".sh"]
 
-    for root, dirs, files in os.walk(directory, topdown=True):
-        dirs[:] = [
-            d
-            for d in dirs
-            if (".git" not in d) and (d != "build") and (d != "hardware/generated")
-        ]
-        for file in files:
-            filename, extension = os.path.splitext(file)
-            if filename not in excluded_files:
-                if extension in script_extensions:
-                    script_files.append(os.path.join(root, file))
-                elif extension in verilog_extensions:
-                    verilog_files.append(os.path.join(root, file))
+    # Find the index of the search_term in the path
+    index = sys.argv[0].rfind("MyVT-Tool")
+    if index != -1:
+        VTbuild_directory = sys.argv[0][:index]
+    else:
+        VTbuild_directory = sys.argv[0]
+
+    search_directories.append(current_directory)
+    search_directories.append(VTbuild_directory)
+    search_directories += get_included_directories()
+    for directory in search_directories:
+        for root, dirs, files in os.walk(directory, topdown=True):
+            dirs[:] = [
+                d
+                for d in dirs
+                if (".git" not in d) and (d != "build") and (d != "hardware/generated")
+            ]
+            for file in files:
+                filename, extension = os.path.splitext(file)
+                if filename not in excluded_files:
+                    if extension in script_extensions:
+                        script_files.append(os.path.join(root, file))
+                    elif extension in verilog_extensions:
+                        verilog_files.append(os.path.join(root, file))
 
     if DEBUG_MODE:
         print_coloured(DEBUG, f"Found verilog files:")
@@ -90,6 +102,21 @@ def find_verilog_and_scripts(directory):
             print_coloured(DEBUG, script_file)
 
     return script_files, verilog_files
+
+
+# Get the directories the user wants to include from the .
+# Args:
+#   None. Reads the sys.argv.
+# Returns:
+#   A list of the directories to include when searching for scripts and Verilog.
+def get_included_directories():
+    included_directories = []
+
+    if "--inc_dir" in sys.argv or "-I" in sys.argv:
+        include_index = 3  # need to get id.
+        included_directories.append(sys.argv[include_index])
+
+    return included_directories
 
 
 # Fetch verilog files, generating them if necessary.
@@ -205,7 +232,8 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
                 script_path, file_name, current_directory, sources_list, verilog_files
             )
     else:
-        sources_list.append(file_path)
+        if file_path not in sources_list:
+            sources_list.append(file_path)
         if extension == "":
             file_name = f"{file_name}.[v/sv]"
         print_coloured(INFO, f"File {file_name} exists under the current directory.")
@@ -359,7 +387,7 @@ def find_filename_in_list(filename, files_list):
 def create_directory(path):
     try:
         os.makedirs(path)
-        print_coloured(OK, f"Created directory '{path}'.")
+        print_coloured(INFO, f"Created directory '{path}'.")
     except OSError as e:
         if DEBUG_MODE:
             print_coloured(DEBUG, f"Did not create directory: {e}")
@@ -376,5 +404,7 @@ if __name__ == "__main__":
         script_files, verilog_files = find_verilog_and_scripts(current_directory)
         sources_list = fetch_rtl(verilog_files, script_files)
         verilog_build(sources_list, f"{current_directory}/build/rtl")
+        print_coloured(OK, "Completed RTL build.")
         sources_list = fetch_testbench(verilog_files, script_files)
         verilog_build(sources_list, f"{current_directory}/build/testbench")
+        print_coloured(OK, "Completed testbench build.")
