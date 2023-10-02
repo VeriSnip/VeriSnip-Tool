@@ -14,6 +14,6 @@ module MyReg #(
     output reg  [DATA_W-1:0] data_q
 );
 
-  `include "reg_data.vs" // en rst
+  `include "reg_data_q.vs" // , , _r, _e,
 
 endmodule
