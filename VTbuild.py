@@ -71,7 +71,7 @@ def find_verilog_and_scripts(current_directory):
     # Find the index of the search_term in the path
     index = sys.argv[0].rfind("MyVT-Tool")
     if index != -1:
-        VTbuild_directory = sys.argv[0][:index]
+        VTbuild_directory = f"{sys.argv[0][:index]}MyVT-Tool"
     else:
         VTbuild_directory = sys.argv[0]
 
@@ -188,8 +188,8 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
         content = file.read()
 
     module_pattern = r"(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
-    include_pattern = r'`include "(.*?)"(?!\s*?/\*)(.*?)\n'
-    include_with_multi_line_comment = r'`include "(.*?)"\s*/\*([\s\S]*?)\*/\n'
+    include_pattern = r'(?<!\S)`include "(.*?)"(?!\s*?/\*)(.*?)\n'
+    include_with_multi_line_comment = r'(?<!\S)`include "(.*?)"\s*/\*\s*?\n([\s\S]*?)\n\s*?\*/\n'
     for pattern in [module_pattern, include_pattern, include_with_multi_line_comment]:
         matches = re.findall(pattern, content)
         for item in matches:
@@ -221,12 +221,9 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
         file_path = find_filename_in_list(file_name, verilog_files)
 
     if file_path is None:
-        arguments_list = []
-        if file_name.endswith(".vs"):
-            arguments_list = str_list[1].split()
         script_path, script_arg = find_most_common_prefix(file_name, script_files)
         if script_path != "":
-            script_arguments = ["python", script_path, script_arg] + arguments_list
+            script_arguments = ["python", script_path, script_arg, str_list[1]]
             subprocess.run(script_arguments)
             sources_list, verilog_files = move_to_generated_dir(
                 script_path, file_name, current_directory, sources_list, verilog_files
@@ -336,7 +333,7 @@ def substitute_vs_file(source_file, sources_list):
     with open(source_file, "r") as file:
         for line in file:
             if not on_comment:
-                match = re.search(r'`include "(.*?)\.vs"(.*)', line)
+                match = re.search(r'(?<!\S)`include "(.*?)\.vs"(.*)', line)
                 if match:
                     vs_file = match.group(1) + ".vs"
                     vs_file_path = find_filename_in_list(vs_file, sources_list)
