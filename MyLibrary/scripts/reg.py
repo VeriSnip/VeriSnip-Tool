@@ -13,7 +13,7 @@
 ##           */
 ## Default values are: Size = 1 bit; Reset Value = 0; Reg_reset = None; Reg_enable = None; Reg_next = {Reg_name}_n.
 
-import sys
+import sys, re
 
 from VTcolors import *
 
@@ -28,13 +28,14 @@ class register:
         self.en = ""
         self.next = ""
 
+        reg_properties = [reg_property.strip() for reg_property in reg_properties]
         # TO DO: function that parses reg_properties and is able to organize its values in a list
-        self.set_reg_name(reg_properties[0].strip())
-        self.set_reg_size(reg_properties[1].strip())
-        self.set_reg_rst_val(reg_properties[2].strip())
-        self.set_reg_rst(reg_properties[3].strip())
-        self.set_reg_en(reg_properties[4].strip())
-        self.set_reg_next(reg_properties[5].strip())
+        self.set_reg_name(reg_properties[0])
+        self.set_reg_size(reg_properties[1])
+        self.set_reg_rst_val(reg_properties[2])
+        self.set_reg_rst(reg_properties[3])
+        self.set_reg_en(reg_properties[4])
+        self.set_reg_next(reg_properties[5])
 
     def set_reg_name(self, reg_name):
         known_suffixes = ["_q", "_r", "_reg"]
@@ -48,7 +49,6 @@ class register:
         self.signal = self.name
         for suffix in known_suffixes:
             self.name = self.name.rsplit(suffix)[0]
-
 
     def set_reg_size(self, reg_size):
         if "size=" in reg_size:
@@ -117,15 +117,24 @@ def reg_description(reg_list):
         verilog_code += f"      {reg.signal} <= {reg.rst_val};\n"
     verilog_code += f"    end else begin\n"
     for reg in reg_list:
-        if reg.rst is not None:
+        if (reg.rst is not None) and (reg.en is not None):
             verilog_code += f"      if ({reg.rst}) begin\n"
             verilog_code += f"        {reg.signal} <= {reg.rst_val};\n"
-        if reg.en is not None:
             verilog_code += f"      end else if ({reg.en}) begin\n"
+            verilog_code += f"        {reg.signal} <= {reg.next};\n"
+            verilog_code += f"      end\n"
+        elif reg.rst is not None:
+            verilog_code += f"      if ({reg.rst}) begin\n"
+            verilog_code += f"        {reg.signal} <= {reg.rst_val};\n"
+            verilog_code += f"      end else begin\n"
+            verilog_code += f"        {reg.signal} <= {reg.next};\n"
+            verilog_code += f"      end\n"
+        elif reg.en is not None:
+            verilog_code += f"      if ({reg.en}) begin\n"
+            verilog_code += f"        {reg.signal} <= {reg.next};\n"
+            verilog_code += f"      end\n"
         else:
-            verilog_code += "      end else begin\n"
-        verilog_code += f"        {reg.signal} <= {reg.next};\n"
-        verilog_code += "      end\n"
+            verilog_code += f"      {reg.signal} <= {reg.next};\n"
     verilog_code += "    end\n"
     verilog_code += "  end\n"
 
@@ -133,17 +142,28 @@ def reg_description(reg_list):
 
 
 def parse_arguments():
+    register_list = []
+    registers_description = []
+
     if len(sys.argv) < 2:
         print_coloured(ERROR, "Not enough arguments.")
         exit(1)
 
-    if "//" in sys.argv:
-        args_after_comment = "".join(sys.argv[sys.argv.index("//") + 1 :])
-        reg_properties = [sys.argv[1]] + args_after_comment.split(",")
-        register_list = [register(reg_properties)]
-        return register_list
+    # Check if any argument contains "//"
+    has_double_slash = any("//" in arg for arg in sys.argv[1:])
+    if has_double_slash:
+        joined_args = f'{sys.argv[1]}, {sys.argv[2][sys.argv[2].index("//")+2:]}'
+        registers_description = [joined_args]
     else:
-        print_coloured(ERROR, "Not supported yet.")
+        joined_args = "".join(sys.argv[2:])
+        registers_description = joined_args.split("\n")
+
+    for description in registers_description:
+        # Split the string by commas outside of any type of braces
+        reg_properties = re.split(r",(?![^{}[\]()]*[}\])])", description)
+        register_list.append(register(reg_properties))
+
+    return register_list
 
 
 # Check if this script is called directly
