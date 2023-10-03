@@ -22,7 +22,7 @@ def parse_arguments():
         exit(1)
     arguments = "".join(sys.argv[2:])
     list_of_regs = arguments.split("\n")
-    print(list_of_regs)
+    print_coloured(DEBUG, list_of_regs)
 
 def create_vs():
     vs_content = ""
