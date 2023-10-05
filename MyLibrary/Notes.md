@@ -1,3 +1,3 @@
 # Random notes/ideas
-- VTbuild could include the VTbuild on the search directories on default.
 - VTbuild should accept passing `--inc_dir` as arguments.
+- generate_io: if "," is in script call arguments than do not add a "," to the last generated IO.
