@@ -40,7 +40,7 @@ class register:
     def set_reg_name(self, reg_name):
         known_suffixes = ["_q", "_r", "_reg"]
         if "name=" in reg_name:
-            self.name = reg_name.split("name=")[1]
+            reg_name = reg_name.split("name=")[1]
         if reg_name == "":
             print_coloured(ERROR, "You should give a name to the register.")
             exit(1)
@@ -52,7 +52,7 @@ class register:
 
     def set_reg_size(self, reg_size):
         if "size=" in reg_size:
-            self.size = reg_size.split("=")[1]
+            reg_size = reg_size.split("=")[1]
         if reg_size == "":
             self.size = "1"
         else:
@@ -60,7 +60,7 @@ class register:
 
     def set_reg_rst_val(self, reg_rst_val):
         if "rst_val=" in reg_rst_val:
-            self.rst_val = reg_rst_val.split("=")[1]
+            reg_rst_val = reg_rst_val.split("=")[1]
         if reg_rst_val == "":
             self.rst_val = f"{self.size}'d0"
         elif reg_rst_val.isdigit():
@@ -70,7 +70,7 @@ class register:
 
     def set_reg_rst(self, reg_rst):
         if "rst=" in reg_rst:
-            self.rst = reg_rst.split("=")[1]
+            reg_rst = reg_rst.split("=")[1]
         if reg_rst == "":
             self.rst = None
         elif reg_rst.startswith("_"):
@@ -80,7 +80,7 @@ class register:
 
     def set_reg_en(self, reg_en):
         if "en=" in reg_en:
-            self.en = reg_en.split("=")[1]
+            reg_en = reg_en.split("=")[1]
         if reg_en == "":
             self.en = None
         elif reg_en.startswith("_"):
@@ -90,7 +90,7 @@ class register:
 
     def set_reg_next(self, reg_next):
         if "next=" in reg_next:
-            self.next = reg_next.split("=")[1]
+            reg_next = reg_next.split("=")[1]
         if reg_next == "":
             self.next = f"{self.name}_n"
         elif reg_next.startswith("_"):
