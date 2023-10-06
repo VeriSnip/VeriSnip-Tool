@@ -101,7 +101,9 @@ def parse_arguments():
     module = sys.argv[1].split("_")[0]
     module_name = sys.argv[1][len(module) + 1 :]
 
-    for arg in sys.argv[2:]:
+    #print_coloured(DEBUG, ' '.join(sys.argv))
+    arguments = re.split(r" (?![^\"\"]*[\"])", sys.argv[2])
+    for arg in arguments:
         # Split the argument into variable name and value
         name_value = arg.split("=")
         if len(name_value) == 2:
