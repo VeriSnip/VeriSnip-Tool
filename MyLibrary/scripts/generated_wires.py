@@ -68,7 +68,8 @@ def parse_arguments():
         wires_properties = sys.argv[2].split("\n")
         for wire_properties in wires_properties:
             wire_properties = wire_properties.split(",")
-            wires.append(wire(wire_properties))
+            if wire_properties != ['']:
+                wires.append(wire(wire_properties))
     return wires
 
 
