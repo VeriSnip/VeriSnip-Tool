@@ -48,7 +48,9 @@ class register:
             self.name = reg_name
         self.signal = self.name
         for suffix in known_suffixes:
-            self.name = self.name.rsplit(suffix)[0]
+            if (self.name.endswith(suffix)):
+                self.name = self.name.rsplit(suffix)[0]
+                break
 
     def set_reg_size(self, reg_size):
         if "size=" in reg_size:
@@ -71,7 +73,7 @@ class register:
     def set_reg_rst(self, reg_rst):
         if "rst=" in reg_rst:
             reg_rst = reg_rst.split("=")[1]
-        if reg_rst == "":
+        if (reg_rst == "") or (reg_rst == "None"):
             self.rst = None
         elif reg_rst.startswith("_"):
             self.rst = f"{self.name}{reg_rst}"
@@ -81,7 +83,7 @@ class register:
     def set_reg_en(self, reg_en):
         if "en=" in reg_en:
             reg_en = reg_en.split("=")[1]
-        if reg_en == "":
+        if (reg_en == "") or (reg_en == "None"):
             self.en = None
         elif reg_en.startswith("_"):
             self.en = f"{self.name}{reg_en}"
