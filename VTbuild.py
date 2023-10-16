@@ -400,8 +400,8 @@ if __name__ == "__main__":
     else:
         script_files, verilog_files = find_verilog_and_scripts(current_directory)
         sources_list = fetch_rtl(verilog_files, script_files)
-        verilog_build(sources_list, f"{current_directory}/build/rtl")
+        verilog_build(sources_list, f"{current_directory}/build/RTL")
         print_coloured(OK, "Completed RTL build.")
         sources_list = fetch_testbench(verilog_files, script_files)
-        verilog_build(sources_list, f"{current_directory}/build/testbench")
-        print_coloured(OK, "Completed testbench build.")
+        verilog_build(sources_list, f"{current_directory}/build/TestBench")
+        print_coloured(OK, "Completed TestBench build.")
