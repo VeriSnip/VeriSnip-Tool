@@ -181,16 +181,22 @@ def read_registers_desc(mm_reg_list):
 
 def generate_mmio_wires(mm_reg_list):
     current_directory = os.getcwd()
-    wires = "r_data, DATA_W\n"
-    wires += "w_data, DATA_W\n"
+    regs = "r_data, DATA_W\n"
+    wires = "w_data, DATA_W\n"
     wires += "read_enable, \n"
     wires += "write_enable, \n"
     wires += "address, ADDR_W\n"
     for mm_reg in mm_reg_list:
         wires += f"{mm_reg.sel}, \n"
+    for mm_reg in mm_reg_list:
+        regs += f"{mm_reg.reg.next}, {mm_reg.reg.size}\n"
+    for mm_reg in mm_reg_list:
+        regs += f"{mm_reg.reg.signal}, {mm_reg.reg.size}\n"
     scripts, _ = find_verilog_and_scripts(current_directory)
     script_path = find_filename_in_list("generated_wires.py", scripts)
     script_arguments = ["python", script_path, module, wires]
+    subprocess.run(script_arguments)
+    script_arguments = ["python", script_path, module, regs, "variable"]
     subprocess.run(script_arguments)
 
 

@@ -31,11 +31,17 @@ class wire:
 
 def create_vs(wires):
     vs_content = ""
+
+    if (len(sys.argv) > 3) and (sys.argv[3] == "variable"):
+        signal_type = "reg"
+    else:
+        signal_type = "wire"
+
     for wire in wires:
         if (wire.size != "1"):
-            vs_content += f"  wire [{wire.size}-1:0] {wire.name};\n"
+            vs_content += f"  {signal_type} [{wire.size}-1:0] {wire.name};\n"
         else:
-            vs_content += f"  wire {wire.name};\n"
+            vs_content += f"  {signal_type} {wire.name};\n"
     write_vs(vs_content, vs_name)
 
 
@@ -51,16 +57,24 @@ def find_file_recursive(directory, search_filename):
 
 
 def write_vs(string, file_name):
-    current_directory = os.getcwd()
-    generated_file = f"{current_directory}/hardware/generated/{file_name}"
-    content = f"  // Automatically generated wires for {sys.argv[1]}\n"
-    if os.path.isfile(generated_file):
-        with open(generated_file, "r") as file:
+    content = f"  // Automatically generated \"wire\" and \"reg\" for {sys.argv[1]}\n"
+    file_path = find_file_under_dir(os.getcwd(), file_name)
+    if file_path != "":
+        with open(file_path, "r") as file:
             content = file.read()
+            content += "\n"
     content += string
     with open(file_name, "w") as file:
         file.write(content)
 
+
+def find_file_under_dir(start_directory, file_name):
+    file_path = ""
+    for root, _, files in os.walk(start_directory):
+        if file_name in files:
+            # Print the full path of the file
+            file_path = os.path.join(root, file_name)
+    return file_path
 
 def parse_arguments():
     wires = []
