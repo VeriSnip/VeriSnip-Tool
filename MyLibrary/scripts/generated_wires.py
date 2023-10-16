@@ -63,6 +63,7 @@ def write_vs(string, file_name):
         with open(file_path, "r") as file:
             content = file.read()
             content += "\n"
+        os.remove(file_path)
     content += string
     with open(file_name, "w") as file:
         file.write(content)
