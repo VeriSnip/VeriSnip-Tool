@@ -125,10 +125,10 @@ def get_included_directories():
 #   script_files (list): List of script file paths.
 # Returns:
 #   A list of all verilog files used by the core.
-def fetch_rtl(verilog_files, script_files):
+def fetch_sources(verilog_files, script_files, top_module):
     sources_list = []
     sources_list, verilog_files = find_or_generate(
-        [sys.argv[1]], script_files, verilog_files, sources_list
+        [top_module], script_files, verilog_files, sources_list
     )
     generated_path = f"{current_directory}/hardware/generated"
     create_directory(generated_path)
@@ -139,38 +139,6 @@ def fetch_rtl(verilog_files, script_files):
         sources_list, verilog_files = analyse_file(
             verilog_file, script_files, verilog_files, sources_list
         )
-        i = i + 1
-
-    return sources_list
-
-
-# Analyze a list of Verilog files for module instantiations or includes.
-# Args:
-#   verilog_files (list): List of Verilog file paths.
-#   script_files (list): List of script file paths.
-# Returns:
-#   list: List of additional source file paths.
-def fetch_testbench(verilog_files, script_files):
-    sources_list = []
-    sources_list, verilog_files = find_or_generate(
-        [sys.argv[1]], script_files, verilog_files, sources_list
-    )
-    main_module = sources_list[0]
-    print_coloured(INFO, f"Main module: {main_module}")
-    sources_list = []
-    sources_list, verilog_files = find_or_generate(
-        [f"{sys.argv[1]}_tb"], script_files, verilog_files, sources_list
-    )
-    print_coloured(INFO, f"Testbench: {sources_list}")
-    i = 0
-
-    while i < len(sources_list):
-        verilog_file = sources_list[i]
-        sources_list, verilog_files = analyse_file(
-            verilog_file, script_files, verilog_files, sources_list
-        )
-        if main_module in sources_list:
-            sources_list.remove(main_module)
         i = i + 1
 
     return sources_list
@@ -189,7 +157,9 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
 
     module_pattern = r"(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
     include_pattern = r'(?<!\S)`include "(.*?)"(?!\s*?/\*)(.*?)\n'
-    include_with_multi_line_comment = r'(?<!\S)`include "(.*?)"\s*/\*\s*?\n([\s\S]*?)\n\s*?\*/\n'
+    include_with_multi_line_comment = (
+        r'(?<!\S)`include "(.*?)"\s*/\*\s*?\n([\s\S]*?)\n\s*?\*/\n'
+    )
     for pattern in [module_pattern, include_pattern, include_with_multi_line_comment]:
         matches = re.findall(pattern, content)
         for item in matches:
@@ -252,15 +222,16 @@ def move_to_generated_dir(
     generated_dir = os.path.join(current_directory, "hardware/generated/")
 
     for filename in os.listdir(current_directory):
-        filename_no_ext, extension = os.path.splitext(filename)
-        file_dir = os.path.join(generated_dir, filename)
+        _, extension = os.path.splitext(filename)
+        file_dst_path = os.path.join(generated_dir, filename)
+        file_src_path = os.path.join(current_directory, filename)
         if extension in verilog_extensions:
-            verilog_files.append(file_dir)
-            verilog_files_found.append(file_dir)
-            file_path = os.path.join(current_directory, filename)
-            shutil.move(file_path, file_dir)
-        if filename == file_name or filename_no_ext == file_name:
-            sources_list.append(file_dir)
+            shutil.move(file_src_path, file_dst_path)
+            verilog_files_found.append(file_dst_path)
+            if file_dst_path not in verilog_files:
+                verilog_files.append(file_dst_path)
+            if file_dst_path not in sources_list:
+                sources_list.append(file_dst_path)
 
     if verilog_files_found == []:
         print_coloured(WARNING, f"{script_path} generated no Verilog files.")
@@ -308,10 +279,24 @@ def find_most_common_prefix(file_name, file_list):
 
 # Build Verilog files and create a build directory.
 # Args:
+#   rtl_sources (list): List of RTL Verilog source file paths.
+#   testbench_sources (list): List of TestBench Verilog source file paths.
+def verilog_build(rtl_sources, testbench_sources):
+    rtl_dir = f"{current_directory}/build/RTL"
+    create_directory(rtl_dir)
+    verilog_copy(rtl_sources, rtl_dir)
+
+    testbench_dir = f"{current_directory}/build/TestBench"
+    create_directory(testbench_dir)
+    testbench_sources = filter_list(testbench_sources, rtl_sources)
+    verilog_copy(testbench_sources, testbench_dir)
+
+
+# Copy Verilog files to build directories and substitute ".vs" on said files
+# Args:
 #   sources_list (list): List of Verilog source file paths.
 #   build_dir (str): Path to the build directory.
-def verilog_build(sources_list, build_dir):
-    create_directory(build_dir)
+def verilog_copy(sources_list, build_dir):
     for verilog_file in sources_list:
         if not verilog_file.endswith(".vs"):
             verilog_content = ""
@@ -319,6 +304,24 @@ def verilog_build(sources_list, build_dir):
             file_name = os.path.basename(verilog_file)
             with open(f"{build_dir}/{file_name}", "w") as file:
                 file.write(verilog_content)
+
+
+# Filter common files between the target list and the source list
+# Args:
+#   target_list (list): List to be filtered.
+#   source_list (list): Secondary source files list.
+# Returns:
+#   filtered_list (list): target_list filtered, remains with all ".vs" files and files not present in source_list.
+def filter_list(target_list, source_list):
+    # Create an empty list to store elements from target_list that are not in source_list
+    filtered_list = []
+
+    # Iterate through target_list and only add elements not present in source_list to filtered_list
+    for element in target_list:
+        if (element not in source_list) or (element.endswith(".vs")):
+            filtered_list.append(element)
+
+    return filtered_list
 
 
 # Recursively substitutes included .vs files in the source file content.
@@ -399,9 +402,11 @@ if __name__ == "__main__":
         clean_build()
     else:
         script_files, verilog_files = find_verilog_and_scripts(current_directory)
-        sources_list = fetch_rtl(verilog_files, script_files)
-        verilog_build(sources_list, f"{current_directory}/build/RTL")
-        print_coloured(OK, "Completed RTL build.")
-        sources_list = fetch_testbench(verilog_files, script_files)
-        verilog_build(sources_list, f"{current_directory}/build/TestBench")
-        print_coloured(OK, "Completed TestBench build.")
+        rtl_sources = fetch_sources(verilog_files, script_files, sys.argv[1])
+        print_coloured(OK, "Found or generated all RTL sources.")
+        testbench_sources = fetch_sources(
+            verilog_files, script_files, f"{sys.argv[1]}_tb"
+        )
+        print_coloured(OK, "Found or generated all TestBench sources.")
+        verilog_build(rtl_sources, testbench_sources)
+        print_coloured(OK, f"Created {sys.argv[1]} build directory.")
