@@ -128,7 +128,7 @@ def get_included_directories():
 def fetch_sources(verilog_files, script_files, top_module):
     sources_list = []
     sources_list, verilog_files = find_or_generate(
-        [top_module], script_files, verilog_files, sources_list
+        "", [top_module], script_files, verilog_files, sources_list
     )
     generated_path = f"{current_directory}/hardware/generated"
     create_directory(generated_path)
@@ -154,6 +154,7 @@ def fetch_sources(verilog_files, script_files, top_module):
 def analyse_file(file_path, script_files, verilog_files, sources_list):
     with open(file_path, "r") as file:
         content = file.read()
+    filename = os.path.basename(file_path)
 
     module_pattern = r"(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
     include_pattern = r'(?<!\S)`include "(.*?)"(?!\s*?/\*)(.*?)\n'
@@ -165,7 +166,7 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
         for item in matches:
             if not item[0].startswith("module "):
                 sources_list, verilog_files = find_or_generate(
-                    item, script_files, verilog_files, sources_list
+                    filename, item, script_files, verilog_files, sources_list
                 )
 
     return sources_list, verilog_files
@@ -179,7 +180,9 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
 #   match: Matched object from module pattern.
 # Returns:
 #   str: Path to the found or generated file.
-def find_or_generate(str_list, script_files, verilog_files, sources_list):
+def find_or_generate(
+    callee_filename, str_list, script_files, verilog_files, sources_list
+):
     file_path = None
     file_name = str_list[0].split()[0]
     _, extension = os.path.splitext(file_name)
@@ -193,10 +196,16 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
     if file_path is None:
         script_path, script_arg = find_most_common_prefix(file_name, script_files)
         if script_path != "":
-            script_arguments = ["python", script_path, script_arg, str_list[1]]
+            script_arguments = [
+                "python",
+                script_path,
+                script_arg,
+                str_list[1],
+                callee_filename,
+            ]
             subprocess.run(script_arguments)
             sources_list, verilog_files = move_to_generated_dir(
-                script_path, file_name, current_directory, sources_list, verilog_files
+                script_path, current_directory, sources_list, verilog_files
             )
     else:
         if file_path not in sources_list:
@@ -214,9 +223,7 @@ def find_or_generate(str_list, script_files, verilog_files, sources_list):
 #   current_directory (str): A string equivalent to the current directory.
 # Returns:
 #   generated_dir (str): Directory of the generated files.
-def move_to_generated_dir(
-    script_path, file_name, current_directory, sources_list, verilog_files
-):
+def move_to_generated_dir(script_path, current_directory, sources_list, verilog_files):
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
     verilog_files_found = []
     generated_dir = os.path.join(current_directory, "hardware/generated/")
