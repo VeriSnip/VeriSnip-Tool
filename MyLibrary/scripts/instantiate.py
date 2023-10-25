@@ -3,6 +3,7 @@
 # Should be called as "`include "instantiate_{module}_{module_name}.vs" // prefix="prefix" suffix="suffix""
 
 import sys, os, re
+import subprocess
 from VTbuild import (
     find_verilog_and_scripts,
     find_or_generate,
@@ -11,6 +12,7 @@ from VTbuild import (
 )
 from VTcolors import *
 
+callee_module = ""
 module = ""
 module_name = ""
 parameters = ""
@@ -26,10 +28,11 @@ def update_module_text(module_text, prefix):
     global parameters, ports_text
     module_parameters = []
     module_ports = []
+    module_new_ports = {}
     for line in module_text.split("\n"):
         if line.strip().startswith("parameter"):
-            variable_part, comment_part = extract_comment(line)
-            parts = variable_part.split("=")
+            parameter_part, comment_part = extract_comment(line)
+            parts = parameter_part.split("=")
             parameter_name = parts[0].strip().split()[-1]
             if parameter_name in custom_ports:
                 parameter_value = custom_ports[parameter_name]
@@ -38,8 +41,8 @@ def update_module_text(module_text, prefix):
             updated_line = f"    .{parameter_name}({parameter_value}),{comment_part}"
             module_parameters.append(updated_line)
         elif line.strip().startswith("input") or line.strip().startswith("output"):
-            variable_part, comment_part = extract_comment(line)
-            parts = variable_part.split()
+            io_part, comment_part = extract_comment(line)
+            parts = io_part.split()
             port_name = parts[-1].rstrip(",")
             if port_name in custom_ports:
                 port_value = custom_ports[port_name]
@@ -51,6 +54,7 @@ def update_module_text(module_text, prefix):
                 else:
                     port = port_name
                 port_value = f"{prefix}{port}{suffix}"
+                module_new_ports[port_value] = io_part
             updated_line = f"    .{port_name}({port_value}),{comment_part}"
             module_ports.append(updated_line)
 
@@ -60,6 +64,53 @@ def update_module_text(module_text, prefix):
     if module_ports != []:
         module_ports[-1] = module_ports[-1].replace(",", "")
         ports_text = "\n".join(module_ports)
+
+    generate_io_wires(module_new_ports)
+
+
+def generate_io_wires(io_dictionary):
+    generate_wires = ""
+    for io_name in io_dictionary:
+        match = re.search(r".*?\[(.*?):.*?].*?", io_dictionary[io_name])
+        if match:
+            io_size = get_io_size(match.group(1).strip())
+        else:
+            io_size = ""
+        generate_wires += f"{io_name}, {io_size}\n"
+    scripts, _ = find_verilog_and_scripts(current_directory)
+    script_path = find_filename_in_list("generated_wires.py", scripts)
+    script_arguments = ["python", script_path, callee_module, generate_wires]
+    subprocess.run(script_arguments)
+
+
+def get_io_size(io_length):
+    # Split the input string on arithmetic operators (+, -, *, /) while preserving the operators
+    parts = re.split(r'([-+])', io_length)
+    parts = [part.strip() for part in parts]
+    if len(parts)%2 != 1:
+        print("Port does not have a valid lenght: {io_length}")
+        exit(1)
+
+    arithmetic_str = f"+1"
+    arithmetic = 1
+    index = 0
+    while index < len(parts):
+        arithmetic_str = f"{parts[-(index+1)]}" + arithmetic_str
+        try:
+            arithmetic = eval(arithmetic_str)
+            io_size = str(arithmetic)
+        except (NameError, SyntaxError):
+            # If it's not a valid arithmetic expression, add it to the result as is
+            if arithmetic > 0:
+                io_size = "".join(parts[0:len(parts)-index])+f"+{arithmetic}"
+            elif arithmetic < 0:
+                io_size = "".join(parts[0:len(parts)-index])+str(arithmetic)
+            else:
+                io_size = "".join(parts[0:len(parts)-index])
+            break
+        index = index + 1
+    
+    return io_size
 
 
 def extract_comment(line):
@@ -94,14 +145,14 @@ def create_vs(content):
 
 
 def parse_arguments():
-    global module, module_name, prefix, suffix
+    global module, module_name, prefix, suffix, callee_module
 
     if len(sys.argv) < 2:
         exit(1)
     module = sys.argv[1].split("_")[0]
     module_name = sys.argv[1][len(module) + 1 :]
 
-    #print_coloured(DEBUG, ' '.join(sys.argv))
+    # print_coloured(DEBUG, ' '.join(sys.argv))
     arguments = re.split(r" (?![^\"\"]*[\"])", sys.argv[2])
     for arg in arguments:
         # Split the argument into variable name and value
@@ -120,13 +171,16 @@ def parse_arguments():
     if suffix is None:
         suffix = ""
 
+    if len(sys.argv) > 3:
+        callee_module, _ = os.path.splitext(sys.argv[3])
+
 
 def module_definition_content(current_directory):
     sources_list = []
 
     script_files, verilog_files = find_verilog_and_scripts(current_directory)
     sources_list, verilog_files = find_or_generate(
-        [module], script_files, verilog_files, sources_list
+        "", [module], script_files, verilog_files, sources_list
     )
 
     if sources_list == []:
@@ -135,6 +189,7 @@ def module_definition_content(current_directory):
 
     with open(sources_list[0], "r") as file:
         content = file.read()
+    filename = os.path.basename(sources_list[0])
 
     module_text = ""
     module_pattern = r"module(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
@@ -151,7 +206,7 @@ def module_definition_content(current_directory):
     include_matches = re.findall(include_pattern, module_text)
     for include in include_matches:
         sources_list, verilog_files = find_or_generate(
-            include, script_files, verilog_files, sources_list
+            filename, include, script_files, verilog_files, sources_list
         )
 
     new_content = ""
