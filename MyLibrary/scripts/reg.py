@@ -157,8 +157,7 @@ def parse_arguments():
         joined_args = f'{sys.argv[1]}, {sys.argv[2][sys.argv[2].index("//")+2:]}'
         registers_description = [joined_args]
     else:
-        joined_args = "".join(sys.argv[2:])
-        registers_description = joined_args.split("\n")
+        registers_description = sys.argv[2].split("\n")
 
     for description in registers_description:
         # Split the string by commas outside of any type of braces
