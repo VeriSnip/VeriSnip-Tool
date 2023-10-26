@@ -63,10 +63,13 @@ class register:
     def set_reg_rst_val(self, reg_rst_val):
         if "rst_val=" in reg_rst_val:
             reg_rst_val = reg_rst_val.split("=")[1]
-        if reg_rst_val == "":
-            self.rst_val = f"{self.size}'d0"
+        if reg_rst_val == "" or reg_rst_val == "0":
+            if self.size != "1":
+                self.rst_val = "{"+self.size+"{1'b0}}"
+            else:
+                self.rst_val = "1'b0"
         elif reg_rst_val.isdigit():
-            self.rst_val = f"{self.size}'d{reg_rst_val}"
+            self.rst_val = f"'d{reg_rst_val}"
         else:
             self.rst_val = reg_rst_val
 

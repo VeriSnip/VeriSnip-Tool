@@ -157,11 +157,12 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
     filename = os.path.basename(file_path)
 
     module_pattern = r"(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
+    inline_module_pattern = r"(?<!\S)(\w+)\s+?(\w+)\s*?\(\.(.+?)\);"
     include_pattern = r'(?<!\S)`include "(.*?)"(?!\s*?/\*)(.*?)\n'
     include_with_multi_line_comment = (
         r'(?<!\S)`include "(.*?)"\s*/\*\s*?\n([\s\S]*?)\n\s*?\*/\n'
     )
-    for pattern in [module_pattern, include_pattern, include_with_multi_line_comment]:
+    for pattern in [module_pattern, inline_module_pattern, include_pattern, include_with_multi_line_comment]:
         matches = re.findall(pattern, content)
         for item in matches:
             if not item[0].startswith("module "):
