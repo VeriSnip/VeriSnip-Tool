@@ -1,5 +1,5 @@
 ## MyVT-Overview
-My Verilog Template is a project that I will be working on my free time. The project aim is to compile and elaborate Verilog modules. The Verilog cores are written in traditional Verilog and might use `include "file" to add automaticaly generated code.
+My Verilog Template is a project that I will be working on my free time. The project aim is to compile and elaborate Verilog modules. The Verilog cores are written in traditional Verilog and might use `include "file" to add automatically generated code.
 
 ### Index
 1. [How to use MyVT](#how-to-use-myvt)
@@ -70,17 +70,34 @@ The "MyLibrary" directory contains hardware Verilog modules, snippets and script
 This section of the README contains information about the scripts present under the `./library/scripts` directory.  
 Read more about each script in the [README.md on the scripts directory](https://github.com/PedroAntunes178/MyVT-Tool/tree/main/MyLibrary/scripts/README.md).
 
-## Glossary
-- vt - Verilog Template
-- vs - Verilog Snippet
-### Verilog code style
-- \_i - input
-- \_o - output
-- \_n - next
-- \_q - registered
-- \_r - reset
-- \_e - enable
-- ...
+
+## Opening an Issue
+
+Welcome to our issue reporting system! We appreciate your contribution to the project by reporting any issues you encounter. Your feedback helps us make this project even better.
+
+### How to Open an Issue
+
+When opening an issue, please follow this format:
+
+> **Issue Title**: A concise and descriptive title for the issue.
+
+> Hello **Tag the developers you think might be able to help**,
+> 
+> ## Issue Description:  
+> Provide a detailed description of the issue you encountered. Include information about your environment, steps to reproduce the issue, and any error messages. The more details you provide, the easier it is for us to understand and address the problem.
+> 
+> ## Solution Reference (Optional):  
+> If you have a solution in mind, you're welcome to present it and provide a detailed explanation of why you believe it will work. If possible, include references to supporting pages or documentation that back your proposed solution. This can help us better understand your perspective and expedite the resolution process.
+> 
+> ## Suggested Changes (Optional):  
+> If you have ideas for changes that might solve the issue, propose them here. Be clear and concise in your suggestions.
+> 
+> ## Additional Question (Optional):  
+> If you have questions directly or indirectly related to the issue, feel free to ask them in this section.
+
+Tag developers by using `@username` to get their attention.
+
+We appreciate your help in improving this project!
 
 ## Contributing
 People may contribute with automatic generated verilog scripts. These scripts should be under the hardware/scripts directory. Furthermore, when adding a script the contributor must as well write a corresponding section on the README. That section should explain the core generated and how the script should be used. The section structure must follow the other scripts sections structures.
