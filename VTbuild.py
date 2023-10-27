@@ -54,14 +54,10 @@ def remove_directory(directory_to_remove):
     try:
         shutil.rmtree(directory_to_remove)
         print_coloured(
-            OK,
-            f"Directory '{directory_to_remove}' and its contents removed successfully.",
+            OK, f"Removed directory '{directory_to_remove}' and its contents."
         )
     except OSError as e:
-        print_coloured(
-            WARNING,
-            f"removing directory '{directory_to_remove}' and its contents: {e}",
-        )
+        print_coloured(WARNING, f"Could not remove directory. {e}")
 
 
 # Finds all verilog snippets, modules, and scripts under the given directory.
