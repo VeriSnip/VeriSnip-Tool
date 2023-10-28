@@ -295,10 +295,13 @@ def find_most_common_prefix(file_name, file_list):
     return most_common_file, uncommon_words
 
 
-# Build Verilog files and create a build directory.
+# Builds Verilog files and creates a build directory for RTL sources.
 # Args:
-#   rtl_sources (list): List of RTL Verilog source file paths.
-#   testbench_sources (list): List of TestBench Verilog source file paths.
+#   module (str): The module name for Verilog files.
+#   verilog_files (list): List of Verilog source file paths.
+#   script_files (list): List of script file paths.
+# Returns:
+#   list: The list of RTL Verilog source files.
 def rtl_build(module, verilog_files, script_files):
     rtl_dir = f"{current_directory}/build/RTL"
     rtl_sources = fetch_sources(verilog_files, script_files, module)
@@ -307,6 +310,12 @@ def rtl_build(module, verilog_files, script_files):
     return rtl_sources
 
 
+# Builds TestBench Verilog files and creates a build directory.
+# Args:
+#   TestBench (str): The TestBench name.
+#   verilog_files (list): List of Verilog source file paths.
+#   script_files (list): List of script file paths.
+#   rtl_sources (list): List of RTL Verilog source files.
 def testbench_build(TestBench, verilog_files, script_files, rtl_sources):
     testbench_dir = f"{current_directory}/build/TestBench"
     testbench_sources = fetch_sources(verilog_files, script_files, TestBench)
@@ -315,6 +324,10 @@ def testbench_build(TestBench, verilog_files, script_files, rtl_sources):
     print_coloured(OK, "Built all TestBench sources.")
 
 
+# Copies TestBench C++ file to the TestBench build directory.
+# Args:
+#   TestBench (str): The TestBench name.
+#   testbench_dir (str): The directory for TestBench files.
 def copy_testbench_cpp(TestBench, testbench_dir):
     for root, _, files in os.walk("."):
         if f"{TestBench}.cpp" in files:
@@ -333,6 +346,13 @@ def copy_testbench_cpp(TestBench, testbench_dir):
     )
 
 
+# Builds Verilog files for specified boards and creates a build directory.
+# Args:
+#   Boards (list): List of board names.
+#   main_module (str): The main module name.
+#   verilog_files (list): List of Verilog source file paths.
+#   script_files (list): List of script file paths.
+#   rtl_sources (list): List of RTL Verilog source files.
 def board_build(Boards, main_module, verilog_files, script_files, rtl_sources):
     for Board in Boards:
         Board_name = Board
