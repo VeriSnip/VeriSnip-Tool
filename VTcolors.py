@@ -18,4 +18,12 @@ UNDERLINE = "\033[4m"
 #    string: The string to print.
 def print_coloured(modifier, string):
     script_name = os.path.basename(sys.argv[0])
-    print(f"{modifier} ({script_name}): {string}{NORMAL}")
+    # Check conditions for printing based on arguments and modifier
+    if modifier == DEBUG:
+        if "--debug" in sys.argv:
+            print(f"{modifier} ({script_name}): {string}{NORMAL}")
+    elif modifier == INFO:
+        if "--quiet" not in sys.argv:
+            print(f"{modifier} ({script_name}): {string}{NORMAL}")
+    else:
+        print(f"{modifier} ({script_name}): {string}{NORMAL}")
