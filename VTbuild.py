@@ -133,7 +133,7 @@ def get_included_directories():
 def fetch_sources(verilog_files, script_files, top_module):
     sources_list = []
     sources_list, verilog_files = find_or_generate(
-        "", [top_module], script_files, verilog_files, sources_list
+        "", tuple([top_module]), script_files, verilog_files, sources_list
     )
     generated_path = f"{current_directory}/hardware/generated"
     create_directory(generated_path)
@@ -213,7 +213,7 @@ def find_or_generate(
                 script_arg,
                 str_list[1],
                 callee_filename,
-            ]
+            ] + sys.argv[1:]
             subprocess.run(script_arguments)
             sources_list, verilog_files = move_to_generated_dir(
                 script_path, current_directory, sources_list, verilog_files
@@ -502,10 +502,6 @@ def parse_arguments():
                 print_coloured(ERROR, "Invalid argument after --Boards")
                 help_build()
                 return None, None, None
-        else:
-            print_coloured(ERROR, "Invalid argument:", sys.argv[i])
-            help_build()
-            return None, None, None
         i += 1
 
     return module_name, testbench_name, board_modules
