@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 
-import re, subprocess
+# mmio.py script creates memory mapped registers
+# To call this script in a Verilog file it should follow one of the following patterns:
+#   `include "mmio_{module}.vs" /*
+#   Reg_name0, Size, Reset Value, Reg_reset, Reg_enable, Reg_next, Address, Access Type, Default Value
+#   Reg_name1, Size, Reset Value, Reg_reset, Reg_enable, Reg_next, Address, Access Type, Default Value
+#   Reg_name2, Size, Reset Value, Reg_reset, Reg_enable, Reg_next, Address, Access Type, Default Value
+#   ...
+#   */
+# Default values are: Size = 1 bit; Reset Value = 0; Reg_reset = None; Reg_enable = None; Reg_next = {Reg_name}_n; Access Type = "R/W"; Default Value = Reg_name.
+# It depends on: reg.py; generated_wires.py.
+
+import subprocess
 from VTbuild import (
     find_verilog_and_scripts,
     find_filename_in_list,
 )
 from VTcolors import *
 from reg import register
-
-# Should be called as "`include "mmio_{module}.vs" /*
-#                       Reg_name0, Size, Reset Value, Reg_reset, Reg_enable, Reg_next, Address, Access Type, Default Value
-#                       Reg_name1, Size, Reset Value, Reg_reset, Reg_enable, Reg_next, Address, Access Type, Default Value
-#                       Reg_name2, Size, Reset Value, Reg_reset, Reg_enable, Reg_next, Address, Access Type, Default Value
-#                       ...
-#                       */
 
 module = sys.argv[1]
 

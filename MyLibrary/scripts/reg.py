@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 
 # reg.py script creates a register
-# it should be called as "`include "reg_string.vs" // en rst rst_val=0 data_q=string_q ...""
-# TO DO: alternative to call:
-## `include "reg_{Reg_name}.vs" // Size, Reset Value, Reg_reset, Reg_enable, Reg_next"
-## and
-## `include "reg_{list_name}.vs" /*
-##           Reg_name0, Size, Reset Value, Reg_reset, Reg_enable, Reg_next
-##           Reg_name1, Size, Reset Value, Reg_reset, Reg_enable, Reg_next
-##           Reg_name2, Size, Reset Value, Reg_reset, Reg_enable, Reg_next
-##           ...
-##           */
-## Default values are: Size = 1 bit; Reset Value = 0; Reg_reset = None; Reg_enable = None; Reg_next = {Reg_name}_n.
+# To call this script in a Verilog file it should follow one of the following patterns:
+#   `include "reg_{Reg_name}.vs" // Size, Reset Value, Reg_reset, Reg_enable, Reg_next
+# and
+#   `include "reg_{list_name}.vs" /*
+#             Reg_name0, Size, Reset Value, Reg_reset, Reg_enable, Reg_next
+#             Reg_name1, Size, Reset Value, Reg_reset, Reg_enable, Reg_next
+#             Reg_name2, Size, Reset Value, Reg_reset, Reg_enable, Reg_next
+#             ...
+#             */
+# Default values are: Size = 1 bit; Reset Value = 0; Reg_reset = None; Reg_enable = None; Reg_next = {Reg_name}_n.
 
 import sys, re
 

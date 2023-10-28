@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
-# Should be called as "`include "instantiate_{module}_{module_name}.vs" // prefix="prefix" suffix="suffix""
+# instantiate.py script creates the instantiation of a module
+# To call this script in a Verilog file it should follow one of the following patterns:
+#   `include "instantiate_{module}_{module_name}.vs" // prefix="prefix" suffix="suffix" {port_name}="connected signal"
+# Default values are: prefix = "{module_name}_"; suffix = ""; {port_name} = "{prefix}{port_name}{suffix}".
+# It depends on: generated_wires.py.
 
 import sys, os, re
 import subprocess

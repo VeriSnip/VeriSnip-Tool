@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 
+# generated_wires.py script creates wires and "reg" signals
+# To call this script in a Verilog file it should follow one of the following patterns:
+#   `include "generated_wires.vs" /*
+#             Name1, Size
+#             Name2, Size
+#             Name3, Size
+#             ...
+#             */
+# Default values are: Size = 1 bit.
+# When called from another script an additional argument can passed to create "reg" type signals instead of "wires".
+
+import re
 from VTcolors import *
 
 vs_name = f"generated_wires_{sys.argv[1]}.vs"
@@ -30,7 +42,11 @@ class wire:
 
 
 def create_vs(wires):
-    vs_content = ""
+    vs_content, existing_wires = read_file(vs_name)
+    if vs_content == "":
+        vs_content = (
+            f'  // Automatically generated "wire" and "reg" for {sys.argv[1]}\n'
+        )
 
     if (len(sys.argv) > 3) and (sys.argv[3] == "variable"):
         signal_type = "reg"
@@ -38,10 +54,12 @@ def create_vs(wires):
         signal_type = "wire"
 
     for wire in wires:
-        if (wire.size != "1"):
-            vs_content += f"  {signal_type} [{wire.size}-1:0] {wire.name};\n"
-        else:
-            vs_content += f"  {signal_type} {wire.name};\n"
+        if wire.name not in existing_wires:
+            if wire.size != "1":
+                vs_content += f"  {signal_type} [{wire.size}-1:0] {wire.name};\n"
+            else:
+                vs_content += f"  {signal_type} {wire.name};\n"
+
     write_vs(vs_content, vs_name)
 
 
@@ -56,17 +74,32 @@ def find_file_recursive(directory, search_filename):
     return False
 
 
-def write_vs(string, file_name):
-    content = f"  // Automatically generated \"wire\" and \"reg\" for {sys.argv[1]}\n"
+def write_vs(content, file_name):
+    with open(file_name, "w") as file:
+        file.write(content)
+
+
+def read_file(file_name):
     file_path = find_file_under_dir(os.getcwd(), file_name)
+    # Regular expression pattern to match variable names
+    pattern = r"\b(?:wire|reg)\s+(\[.*?\])?\s*(\w*?)\s*;"
+    existing_wires = []
+    content = ""
+
     if file_path != "":
         with open(file_path, "r") as file:
             content = file.read()
             content += "\n"
         os.remove(file_path)
-    content += string
-    with open(file_name, "w") as file:
-        file.write(content)
+
+    # Find all matches in the text using the pattern
+    matches = re.findall(pattern, content)
+
+    # Extract variable names from matches
+    for match in matches:
+        existing_wires.append(match[1])
+
+    return content, existing_wires
 
 
 def find_file_under_dir(start_directory, file_name):
@@ -77,13 +110,14 @@ def find_file_under_dir(start_directory, file_name):
             file_path = os.path.join(root, file_name)
     return file_path
 
+
 def parse_arguments():
     wires = []
     if len(sys.argv) > 2:
         wires_properties = sys.argv[2].split("\n")
         for wire_properties in wires_properties:
             wire_properties = wire_properties.split(",")
-            if wire_properties != ['']:
+            if wire_properties != [""]:
                 wires.append(wire(wire_properties))
     return wires
 
