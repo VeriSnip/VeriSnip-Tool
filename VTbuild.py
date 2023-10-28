@@ -86,12 +86,12 @@ def find_verilog_and_scripts(current_directory):
     search_directories.append(VTbuild_directory)
     search_directories += get_included_directories()
     for directory in search_directories:
-        for root, dirs, files in os.walk(directory, topdown=True):
-            dirs[:] = [
-                d
-                for d in dirs
-                if (".git" not in d) and (d != "build") and (d != "hardware/generated")
-            ]
+        for root, directories, files in os.walk(directory, topdown=True):
+            filtered_dirs = []
+            for directory in directories:
+                if directory not in [".git", "build", "generated", "__pycache__"]:
+                    filtered_dirs.append(directory)
+            directories[:] = filtered_dirs
             for file in files:
                 filename, extension = os.path.splitext(file)
                 if filename not in excluded_files:
