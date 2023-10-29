@@ -15,6 +15,7 @@ from VTbuild import (
     substitute_vs_file,
 )
 from VTcolors import *
+from generated_wires import string_eval_arithmetic
 
 callee_module = ""
 module = ""
@@ -75,9 +76,9 @@ def update_module_text(module_text, prefix):
 def generate_io_wires(io_dictionary):
     generate_wires = ""
     for io_name in io_dictionary:
-        match = re.search(r".*?\[(.*?):.*?].*?", io_dictionary[io_name])
+        match = re.search(r".*?\[(.*?):.*?\].*?", io_dictionary[io_name])
         if match:
-            io_size = get_io_size(match.group(1).strip())
+            io_size = string_eval_arithmetic(f"{match.group(1).strip()}+1")
         else:
             io_size = ""
         generate_wires += f"{io_name}, {io_size}\n"
@@ -85,36 +86,6 @@ def generate_io_wires(io_dictionary):
     script_path = find_filename_in_list("generated_wires.py", scripts)
     script_arguments = ["python", script_path, callee_module, generate_wires]
     subprocess.run(script_arguments)
-
-
-def get_io_size(io_length):
-    # Split the input string on arithmetic operators (+, -, *, /) while preserving the operators
-    parts = re.split(r'([-+])', io_length)
-    parts = [part.strip() for part in parts]
-    if len(parts)%2 != 1:
-        print("Port does not have a valid lenght: {io_length}")
-        exit(1)
-
-    arithmetic_str = f"+1"
-    arithmetic = 1
-    index = 0
-    while index < len(parts):
-        arithmetic_str = f"{parts[-(index+1)]}" + arithmetic_str
-        try:
-            arithmetic = eval(arithmetic_str)
-            io_size = str(arithmetic)
-        except (NameError, SyntaxError):
-            # If it's not a valid arithmetic expression, add it to the result as is
-            if arithmetic > 0:
-                io_size = "".join(parts[0:len(parts)-index])+f"+{arithmetic}"
-            elif arithmetic < 0:
-                io_size = "".join(parts[0:len(parts)-index])+str(arithmetic)
-            else:
-                io_size = "".join(parts[0:len(parts)-index])
-            break
-        index = index + 1
-    
-    return io_size
 
 
 def extract_comment(line):

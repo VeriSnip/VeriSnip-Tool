@@ -41,6 +41,38 @@ class wire:
             self.size = wire_size
 
 
+# Evaluates and processes an arithmetic expression within a string.
+# Args:
+#   - input_string (str): A string containing arithmetic expressions to be evaluated.
+# Returns:
+#   - result (str): The result of the evaluated arithmetic expressions in the input string.
+# This function splits the input string into parts based on arithmetic operators (+, -) while preserving the operators. If the parts don't form a valid arithmetic expression, it raises an error indicating an invalid length of the input string. It then iterates through the parts to evaluate the arithmetic expression. The evaluation process continues until it either forms a valid arithmetic expression or, if not valid, appends the remaining parts as they are to the result string.
+def string_eval_arithmetic(input_string):
+    parts = [part.strip() for part in re.split(r"([-+])", input_string)]
+
+    if len(parts) % 2 != 1:
+        print_coloured(ERROR, f"Port does not have a valid length: {input_string}")
+        exit(1)
+    
+    arithmetic_str = ""
+    for index in range(len(parts)):
+        arithmetic_str = f"{parts[-(index+1)]}" + arithmetic_str
+        try:
+            arithmetic = eval(arithmetic_str)
+            result = str(arithmetic)
+        except (NameError, SyntaxError):
+            # If it's not a valid arithmetic expression, add it to the result as is
+            if arithmetic > 0:
+                result = "".join(parts[:-index]) + f"+{arithmetic}"
+            elif arithmetic < 0:
+                result = "".join(parts[:-index]) + str(arithmetic)
+            else:
+                result = "".join(parts[:-index])
+            break
+
+    return result
+
+
 def create_vs(wires):
     vs_content, existing_wires = read_file(vs_name)
     if vs_content == "":
@@ -59,7 +91,8 @@ def create_vs(wires):
     for wire in wires:
         if wire.name not in existing_wires:
             if wire.size != "1":
-                vs_content += f"  {signal_type} [{wire.size}-1:0] {wire.name};\n"
+                length = string_eval_arithmetic(f"{wire.size}-1")
+                vs_content += f"  {signal_type} [{length}:0] {wire.name};\n"
             else:
                 vs_content += f"  {signal_type} {wire.name};\n"
 
