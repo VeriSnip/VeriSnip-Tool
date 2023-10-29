@@ -32,7 +32,7 @@ def get_slave_ios():
     output wire arready_o,
     input  wire [ADDR_WIDTH-1:0] araddr_i,
     input  wire [2:0] arprot_i,
-    output wire rvalid_o,
+    output  reg rvalid_o,
     input  wire rready_i,
     output  reg [DATA_WIDTH-1:0] rdata_o,
     output wire [1:0] rresp_o{',' if last_ios else ''}
@@ -48,7 +48,6 @@ def get_slave_logic():
   assign wready_o = 1'b1;
   assign arready_o = 1'b1;
   assign bresp_o = 2'b00;
-  assign rvalid_o = rvalid_q;
   assign rresp_o = 2'b00;
 
   assign w_address = awvalid_i ? awaddr_i : awaddr_q;
@@ -65,7 +64,7 @@ def get_slave_logic():
     wdata_q, DATA_WIDTH, 0, , wvalid_i, wdata_i
     araddr_q, ADDR_WIDTH, 0, , arvalid_i, araddr_i
     bvalid_o, 1, 0, , , w_enable
-    rvalid_q, 1, 0, , _e, r_enable
+    rvalid_o, 1, 0, , _e, r_enable
     rdata_o, DATA_WIDTH, 0, , , r_data
     */
 """
@@ -79,7 +78,6 @@ def axil_slave_aditional_signals():
     regs += "wvalid_q, 1\n"
     regs += "wdata_q, DATA_WIDTH\n"
     regs += "araddr_q, ADDR_WIDTH\n"
-    regs += "rvalid_q, 1\n"
     wire = "rvalid_e, 1\n"
 
     current_directory = os.getcwd()

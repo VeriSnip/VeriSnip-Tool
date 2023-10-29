@@ -37,7 +37,6 @@ class register:
         self.set_reg_next(reg_properties[5])
 
     def set_reg_name(self, reg_name):
-        known_suffixes = ["_q", "_r", "_reg"]
         if "name=" in reg_name:
             reg_name = reg_name.split("name=")[1]
         if reg_name == "":
@@ -46,8 +45,8 @@ class register:
         else:
             self.name = reg_name
         self.signal = self.name
-        for suffix in known_suffixes:
-            if (self.name.endswith(suffix)):
+        for suffix in ["_q", "_r", "_reg", "_o"]:
+            if self.name.endswith(suffix):
                 self.name = self.name.rsplit(suffix)[0]
                 break
 
@@ -64,7 +63,7 @@ class register:
             reg_rst_val = reg_rst_val.split("=")[1]
         if reg_rst_val == "" or reg_rst_val == "0":
             if self.size != "1":
-                self.rst_val = "{"+self.size+"{1'b0}}"
+                self.rst_val = "{" + self.size + "{1'b0}}"
             else:
                 self.rst_val = "1'b0"
         elif reg_rst_val.isdigit():
@@ -114,13 +113,14 @@ def write_vs(string="", file_name="reg.vs"):
 
 
 def reg_description(reg_list):
-    verilog_code = f"  // {sys.argv[1]} register file\n"
+    verilog_code = f"  // Automatically generated {sys.argv[1]} register file\n"
     verilog_code += "  always @(posedge clk_i, posedge arst_i) begin\n"
     verilog_code += "    if (arst_i) begin\n"
     for reg in reg_list:
         verilog_code += f"      {reg.signal} <= {reg.rst_val};\n"
     verilog_code += f"    end else begin\n"
     for reg in reg_list:
+        verilog_code += f"      // Register {reg.signal}\n"
         if (reg.rst is not None) and (reg.en is not None):
             verilog_code += f"      if ({reg.rst}) begin\n"
             verilog_code += f"        {reg.signal} <= {reg.rst_val};\n"
