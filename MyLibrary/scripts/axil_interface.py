@@ -17,25 +17,25 @@ last_ios = False
 
 def get_slave_ios():
     slave_ios = f"""
-    input  wire awvalid_i,
-    output wire awready_o,
-    input  wire [ADDR_WIDTH-1:0] awaddr_i,
-    input  wire [2:0] awprot_i,
-    input  wire wvalid_i,
-    output wire wready_o,
-    input  wire [DATA_WIDTH-1:0] wdata_i,
-    input  wire [DATA_WIDTH/8-1:0] wstrb_i,
-    output  reg bvalid_o,
-    input  wire bready_i,
-    output wire [1:0] bresp_o,
-    input  wire arvalid_i,
-    output wire arready_o,
-    input  wire [ADDR_WIDTH-1:0] araddr_i,
-    input  wire [2:0] arprot_i,
-    output  reg rvalid_o,
-    input  wire rready_i,
-    output  reg [DATA_WIDTH-1:0] rdata_o,
-    output wire [1:0] rresp_o{',' if last_ios else ''}
+    input  wire AXIL_awvalid_i,
+    output wire AXIL_awready_o,
+    input  wire [ADDR_WIDTH-1:0] AXIL_awaddr_i,
+    input  wire [2:0] AXIL_awprot_i,
+    input  wire AXIL_wvalid_i,
+    output wire AXIL_wready_o,
+    input  wire [DATA_WIDTH-1:0] AXIL_wdata_i,
+    input  wire [DATA_WIDTH/8-1:0] AXIL_wstrb_i,
+    output  reg AXIL_bvalid_o,
+    input  wire AXIL_bready_i,
+    output wire [1:0] AXIL_bresp_o,
+    input  wire AXIL_arvalid_i,
+    output wire AXIL_arready_o,
+    input  wire [ADDR_WIDTH-1:0] AXIL_araddr_i,
+    input  wire [2:0] AXIL_arprot_i,
+    output  reg AXIL_rvalid_o,
+    input  wire AXIL_rready_i,
+    output  reg [DATA_WIDTH-1:0] AXIL_rdata_o,
+    output wire [1:0] AXIL_rresp_o{',' if last_ios else ''}
 """
 
     return slave_ios
@@ -44,41 +44,41 @@ def get_slave_ios():
 def get_slave_logic():
     slave_logic = """
   // Automatically generated AXIL slave logic.
-  assign awready_o = 1'b1;
-  assign wready_o = 1'b1;
-  assign arready_o = 1'b1;
-  assign bresp_o = 2'b00;
-  assign rresp_o = 2'b00;
+  assign AXIL_awready_o = 1'b1;
+  assign AXIL_wready_o = 1'b1;
+  assign AXIL_arready_o = 1'b1;
+  assign AXIL_bresp_o = 2'b00;
+  assign AXIL_rresp_o = 2'b00;
 
-  assign w_address = awvalid_i ? awaddr_i : awaddr_q;
-  assign w_data = wvalid_i ? wdata_i : wdata_q;
-  assign w_enable = (awvalid_i & wvalid_i) | (awvalid_i & wvalid_q) | (awvalid_q & wvalid_i);
-  assign r_address = arvalid_i ? araddr_i : araddr_q;
-  assign r_enable = arvalid_i;
-  assign rvalid_e = arvalid_i | rready_i;
+  assign w_address = AXIL_awvalid_i ? AXIL_awaddr_i : AXIL_awaddr_q;
+  assign w_data = AXIL_wvalid_i ? AXIL_wdata_i : AXIL_wdata_q;
+  assign w_enable = (AXIL_awvalid_i & AXIL_wvalid_i) | (AXIL_awvalid_i & AXIL_wvalid_q) | (AXIL_awvalid_q & AXIL_wvalid_i);
+  assign r_address = AXIL_arvalid_i ? AXIL_araddr_i : AXIL_araddr_q;
+  assign r_enable = AXIL_arvalid_i;
+  assign AXIL_rvalid_e = AXIL_arvalid_i | AXIL_rready_i;
 
   `include "reg_axil_interface_slave.vs"  /*
-    awvalid_q, 1, 0, w_enable, awvalid_i, awvalid_i
-    awaddr_q, ADDR_WIDTH, 0, , awvalid_i, awaddr_i
-    wvalid_q, 1, 0, w_enable, wvalid_i, wvalid_i
-    wdata_q, DATA_WIDTH, 0, , wvalid_i, wdata_i
-    araddr_q, ADDR_WIDTH, 0, , arvalid_i, araddr_i
-    bvalid_o, 1, 0, , , w_enable
-    rvalid_o, 1, 0, , _e, r_enable
-    rdata_o, DATA_WIDTH, 0, , , r_data
+    AXIL_awvalid_q, 1, 0, w_enable, AXIL_awvalid_i, AXIL_awvalid_i
+    AXIL_awaddr_q, ADDR_WIDTH, 0, , AXIL_awvalid_i, AXIL_awaddr_i
+    AXIL_wvalid_q, 1, 0, w_enable, AXIL_wvalid_i, AXIL_wvalid_i
+    AXIL_wdata_q, DATA_WIDTH, 0, , AXIL_wvalid_i, AXIL_wdata_i
+    AXIL_araddr_q, ADDR_WIDTH, 0, , AXIL_arvalid_i, AXIL_araddr_i
+    AXIL_bvalid_o, 1, 0, , , w_enable
+    AXIL_rvalid_o, 1, 0, , _e, r_enable
+    AXIL_rdata_o, DATA_WIDTH, 0, , , r_data
     */
 """
-    axil_slave_aditional_signals()
+    axil_slave_additional_signals()
     return slave_logic
 
 
-def axil_slave_aditional_signals():
-    regs = "awvalid_q, 1\n"
-    regs += "awaddr_q, ADDR_WIDTH\n"
-    regs += "wvalid_q, 1\n"
-    regs += "wdata_q, DATA_WIDTH\n"
-    regs += "araddr_q, ADDR_WIDTH\n"
-    wire = "rvalid_e, 1\n"
+def axil_slave_additional_signals():
+    regs = "AXIL_awvalid_q, 1\n"
+    regs += "AXIL_awaddr_q, ADDR_WIDTH\n"
+    regs += "AXIL_wvalid_q, 1\n"
+    regs += "AXIL_wdata_q, DATA_WIDTH\n"
+    regs += "AXIL_araddr_q, ADDR_WIDTH\n"
+    wire = "AXIL_rvalid_e, 1\n"
 
     current_directory = os.getcwd()
     module = sys.argv[3].split(".")[0]
@@ -93,25 +93,25 @@ def axil_slave_aditional_signals():
 
 def get_master_ios():
     master_ios = f"""
-    output wire awvalid_o,
-    input  wire awready_i,
-    output wire [ADDR_WIDTH-1:0] awaddr_o,
-    output wire [2:0] awprot_o,
-    output wire wvalid_o,
-    input  wire wready_i,
-    output wire [DATA_WIDTH-1:0] wdata_o,
-    output wire [DATA_WIDTH/8-1:0] wstrb_o,
-    input  wire bvalid_i,
-    output wire bready_o,
-    input  wire [1:0] bresp_i,
-    output wire arvalid_o,
-    input  wire arready_i,
-    output wire [ADDR_WIDTH-1:0] araddr_o,
-    output wire [2:0] arprot_o,
-    input  wire rvalid_i,
-    output wire rready_o,
-    input  wire [DATA_WIDTH-1:0] rdata_i,
-    input  wire [1:0] rresp_i{',' if last_ios else ''}
+    output wire AXIL_awvalid_o,
+    input  wire AXIL_awready_i,
+    output wire [ADDR_WIDTH-1:0] AXIL_awaddr_o,
+    output wire [2:0] AXIL_awprot_o,
+    output wire AXIL_wvalid_o,
+    input  wire AXIL_wready_i,
+    output wire [DATA_WIDTH-1:0] AXIL_wdata_o,
+    output wire [DATA_WIDTH/8-1:0] AXIL_wstrb_o,
+    input  wire AXIL_bvalid_i,
+    output wire AXIL_bready_o,
+    input  wire [1:0] AXIL_bresp_i,
+    output wire AXIL_arvalid_o,
+    input  wire AXIL_arready_i,
+    output wire [ADDR_WIDTH-1:0] AXIL_araddr_o,
+    output wire [2:0] AXIL_arprot_o,
+    input  wire AXIL_rvalid_i,
+    output wire AXIL_rready_o,
+    input  wire [DATA_WIDTH-1:0] AXIL_rdata_i,
+    input  wire [1:0] AXIL_rresp_i{',' if last_ios else ''}
 """
 
     return master_ios
