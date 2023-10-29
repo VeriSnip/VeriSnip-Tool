@@ -47,6 +47,9 @@ def create_vs(wires):
         vs_content = (
             f'  // Automatically generated "wire" and "reg" for {sys.argv[1]}\n'
         )
+    # Check if there is already a new line separating the previously generated set of signals from the new one
+    elif not vs_content.endswith("\n\n"):
+        vs_content += "\n"
 
     if (len(sys.argv) > 3) and (sys.argv[3] == "variable"):
         signal_type = "reg"
@@ -89,7 +92,6 @@ def read_file(file_name):
     if file_path != "":
         with open(file_path, "r") as file:
             content = file.read()
-            content += "\n"
         os.remove(file_path)
 
     # Find all matches in the text using the pattern

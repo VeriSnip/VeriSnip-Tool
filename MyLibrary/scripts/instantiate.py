@@ -42,7 +42,7 @@ def update_module_text(module_text, prefix):
                 parameter_value = custom_ports[parameter_name]
             else:
                 parameter_value = parts[1].strip().rstrip(",")
-            updated_line = f"    .{parameter_name}({parameter_value}),{comment_part}"
+            updated_line = f"      .{parameter_name}({parameter_value}),{comment_part}"
             module_parameters.append(updated_line)
         elif line.strip().startswith("input") or line.strip().startswith("output"):
             io_part, comment_part = extract_comment(line)
@@ -59,7 +59,7 @@ def update_module_text(module_text, prefix):
                     port = port_name
                 port_value = f"{prefix}{port}{suffix}"
                 module_new_ports[port_value] = io_part
-            updated_line = f"    .{port_name}({port_value}),{comment_part}"
+            updated_line = f"      .{port_name}({port_value}),{comment_part}"
             module_ports.append(updated_line)
 
     if module_parameters != []:
