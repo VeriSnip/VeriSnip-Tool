@@ -124,8 +124,8 @@ def parse_arguments():
 
     if len(sys.argv) < 2:
         exit(1)
-    module = sys.argv[1].split("_")[0]
-    module_name = sys.argv[1][len(module) + 1 :]
+
+    module, module_name = get_module()
 
     # print_coloured(DEBUG, ' '.join(sys.argv))
     arguments = re.split(r" (?![^\"\"]*[\"])", sys.argv[2])
@@ -148,6 +148,42 @@ def parse_arguments():
 
     if len(sys.argv) > 3:
         callee_module, _ = os.path.splitext(sys.argv[3])
+
+
+def get_module(start_path=os.getcwd()):
+    file_list = []
+    for root, dirs, files in os.walk(start_path):
+        filtered_dirs = []
+        for directory in dirs:
+            if directory not in [".git", "build", "generated", "__pycache__"]:
+                filtered_dirs.append(directory)
+        dirs[:] = filtered_dirs
+        for file in files:
+            file_list.append(file)
+
+    module = find_most_similar_name(sys.argv[1], file_list)
+    module_name = sys.argv[1].removeprefix(module + "_")
+
+    return module, module_name
+
+
+def find_most_similar_name(input_name, file_names):
+    input_words = input_name.split("_")
+    similar_word_counter = 0
+    most_similar_name = ""
+    for name in file_names:
+        tmp_counter = 0
+        tmp_string = ""
+        for word in input_words:
+            tmp_string = tmp_string + word
+            tmp_counter = tmp_counter + 1
+            if name.startswith(tmp_string):
+                if tmp_counter > similar_word_counter:
+                    similar_word_counter = tmp_counter
+                    most_similar_name = tmp_string
+            tmp_string = tmp_string + "_"
+
+    return most_similar_name
 
 
 def module_definition_content(current_directory):
