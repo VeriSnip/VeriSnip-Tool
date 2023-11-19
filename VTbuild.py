@@ -235,7 +235,8 @@ def find_or_generate(
     file_path = None
     file_name = match_strings[0].split()[0]
     _, extension = os.path.splitext(file_name)
-    comment_arg = match_strings[1]
+    if len(match_strings) > 1:
+        comment_arg = match_strings[1]
 
     if extension == "":
         file_path = find_filename_in_list(f"{file_name}.v", verilog_files)
