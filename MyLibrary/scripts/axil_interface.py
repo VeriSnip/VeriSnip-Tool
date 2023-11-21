@@ -12,6 +12,9 @@ from VTbuild import (
 )
 from VTcolors import *
 
+vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name = f"axil_interface_{vs_name_suffix}.vs"
+
 last_ios = False
 
 
@@ -123,7 +126,6 @@ def get_master_logic():
 
 
 def create_vs(node_type, component_type):
-    vs_name = f"axil_interface_{sys.argv[1]}.vs"
     vs_content = ""
     if node_type == "master":
         if component_type == "io":
@@ -169,7 +171,7 @@ def parse_arguments():
         print_coloured(ERROR, "Not enough arguments.")
         exit(1)
 
-    node_type, component_type = sys.argv[1].split("_")[:2]
+    node_type, component_type = vs_name_suffix.split("_")[:2]
 
     if "," in sys.argv[2]:
         last_ios = True

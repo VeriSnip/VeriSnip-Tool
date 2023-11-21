@@ -16,6 +16,9 @@ import sys, re
 
 from VTcolors import *
 
+vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name = f"reg_{vs_name_suffix}.vs"
+
 
 class register:
     def __init__(self, reg_properties):
@@ -102,18 +105,13 @@ class register:
             self.next = reg_next
 
 
-def create_vs(vs_content):
-    vs_name = f"reg_{sys.argv[1]}.vs"
-    write_vs(vs_content, vs_name)
-
-
 def write_vs(string="", file_name="reg.vs"):
     with open(file_name, "w") as file:
         file.write(string)
 
 
 def reg_description(reg_list):
-    verilog_code = f"  // Automatically generated {sys.argv[1]} register file\n"
+    verilog_code = f"  // Automatically generated {vs_name_suffix} register file\n"
     verilog_code += "  always @(posedge clk_i, posedge arst_i) begin\n"
     verilog_code += "    if (arst_i) begin\n"
     for reg in reg_list:
@@ -156,7 +154,7 @@ def parse_arguments():
     # Check if any argument contains "//"
     has_double_slash = any("//" in arg for arg in sys.argv[1:])
     if has_double_slash:
-        joined_args = f'{sys.argv[1]}, {sys.argv[2][sys.argv[2].index("//")+2:]}'
+        joined_args = f'{vs_name_suffix}, {sys.argv[2][sys.argv[2].index("//")+2:]}'
         registers_description = [joined_args]
     else:
         registers_description = sys.argv[2].split("\n")
@@ -173,4 +171,4 @@ def parse_arguments():
 if __name__ == "__main__":
     reg_list = parse_arguments()
     vs_content = reg_description(reg_list)
-    create_vs(vs_content)
+    write_vs(vs_content, vs_name)

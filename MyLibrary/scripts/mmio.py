@@ -19,7 +19,8 @@ from VTbuild import (
 from VTcolors import *
 from reg import register
 
-module = sys.argv[1]
+vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name = f"mmio_{vs_name_suffix}.vs"
 
 assigns = ""
 read_always = ""
@@ -121,7 +122,7 @@ def parse_arguments():
 
 
 def registers_description(mm_reg_list):
-    reg_desc = f'  `include "reg_mmio_{module}.vs" /*\n'
+    reg_desc = f'  `include "reg_mmio_{vs_name_suffix}.vs" /*\n'
     for mm_reg in mm_reg_list:
         reg_desc += f"    {mm_reg.reg.signal}, {mm_reg.reg.size}, {mm_reg.reg.rst_val}, {mm_reg.reg.rst}, , {mm_reg.reg.next}\n"
     reg_desc += "  */\n"
@@ -196,22 +197,20 @@ def generate_mmio_wires(mm_reg_list):
         regs += f"{mm_reg.reg.signal}, {mm_reg.reg.size}\n"
     scripts, _ = find_verilog_and_scripts(current_directory)
     script_path = find_filename_in_list("generated_wires.py", scripts)
-    script_arguments = ["python", script_path, module, wires]
+    script_arguments = ["python", script_path, vs_name_suffix, wires]
     subprocess.run(script_arguments)
-    script_arguments = ["python", script_path, module, regs, "variable"]
+    script_arguments = ["python", script_path, vs_name_suffix, regs, "variable"]
     subprocess.run(script_arguments)
 
 
 def create_vs(reg_list):
-    vs_content = (
-        f"  // Automatically generated memory mapped registers interface for {module}\n"
-    )
+    vs_content = f"  // Automatically generated memory mapped registers interface for {vs_name_suffix}\n"
     generate_mmio_wires(reg_list)
     vs_content += sel_registers_desc(reg_list)
     vs_content += write_registers_desc(reg_list)
     vs_content += read_registers_desc(reg_list)
     vs_content += registers_description(reg_list)
-    write_vs(vs_content, f"mmio_{module}.vs")
+    write_vs(vs_content, vs_name)
 
 
 def write_vs(string="", file_name="reg.vs"):

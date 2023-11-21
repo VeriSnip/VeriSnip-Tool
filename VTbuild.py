@@ -311,42 +311,35 @@ def move_to_generated_dir(script_path, current_directory, sources_list, verilog_
     return sources_list, verilog_files
 
 
-def find_most_common_prefix(file_name, file_list):
+def find_most_common_prefix(input_name, file_list):
     """
     Searches for the file with the most common prefix in a file list.
 
     Args:
-        file_name (str): A string equivalent to the file name to search for.
+        input_name (str): A string equivalent to the file name to search for.
         file_list (list): A list of script file names.
 
     Returns:
         tuple: A tuple containing the file path and the remaining string words.
     """
-    filename_without_extension = os.path.splitext(file_name)[0]
-    input_words = filename_without_extension.split("_")
-    max_common_words = 0
-    most_common_file = ""
-    uncommon_words = ""
-
+    input_words = input_name.split("_")
+    similar_word_counter = 0
+    most_similar_file = ""
     for file_path in file_list:
         file_name = os.path.basename(file_path)
-        filename_without_extension = os.path.splitext(file_name)[0]
-        common_words = 0
-        string_words = filename_without_extension.split("_")
+        tmp_counter = 0
+        tmp_string = ""
+        for word in input_words:
+            tmp_string = tmp_string + word
+            tmp_counter = tmp_counter + 1
+            if file_name.startswith(tmp_string):
+                if tmp_counter > similar_word_counter:
+                    similar_word_counter = tmp_counter
+                    most_similar_file = file_path
+                    file_suffix = "_".join(input_words[tmp_counter:])
+            tmp_string = tmp_string + "_"
 
-        if len(input_words) > len(string_words):
-            for i in range(len(string_words)):
-                if input_words[i] == string_words[i]:
-                    common_words += 1
-                else:
-                    break
-
-        if common_words > max_common_words:
-            max_common_words = common_words
-            uncommon_words = "_".join(input_words[common_words:])
-            most_common_file = file_path
-
-    return most_common_file, uncommon_words
+    return most_similar_file, file_suffix
 
 
 def rtl_build(module, verilog_files, script_files):

@@ -14,7 +14,8 @@
 import re
 from VTcolors import *
 
-vs_name = f"generated_wires_{sys.argv[1]}.vs"
+vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name = f"generated_wires_{vs_name_suffix}.vs"
 
 
 class wire:
@@ -53,7 +54,7 @@ def string_eval_arithmetic(input_string):
     if len(parts) % 2 != 1:
         print_coloured(ERROR, f"Port does not have a valid length: {input_string}")
         exit(1)
-    
+
     arithmetic_str = ""
     for index in range(len(parts)):
         arithmetic_str = f"{parts[-(index+1)]}" + arithmetic_str
@@ -77,7 +78,7 @@ def create_vs(wires):
     vs_content, existing_wires = read_file(vs_name)
     if vs_content == "":
         vs_content = (
-            f'  // Automatically generated "wire" and "reg" for {sys.argv[1]}\n'
+            f'  // Automatically generated "wire" and "reg" for {vs_name_suffix}\n'
         )
     # Check if there is already a new line separating the previously generated set of signals from the new one
     elif not vs_content.endswith("\n\n"):

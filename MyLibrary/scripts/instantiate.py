@@ -17,6 +17,9 @@ from VTbuild import (
 from VTcolors import *
 from generated_wires import string_eval_arithmetic
 
+vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name = f"instantiate_{vs_name_suffix}.vs"
+
 callee_module = ""
 module = ""
 module_name = ""
@@ -116,7 +119,7 @@ def create_vs(content):
 {ports_text}
   );
 """
-    write_vs(instantiation, f"instantiate_{module}_{module_name}.vs")
+    write_vs(instantiation, vs_name)
 
 
 def parse_arguments():
@@ -161,8 +164,8 @@ def get_module(start_path=os.getcwd()):
         for file in files:
             file_list.append(file)
 
-    module = find_most_similar_name(sys.argv[1], file_list)
-    module_name = sys.argv[1].removeprefix(module + "_")
+    module = find_most_similar_name(vs_name_suffix, file_list)
+    module_name = vs_name_suffix.removeprefix(module + "_")
 
     return module, module_name
 
