@@ -8,13 +8,6 @@ import sys
 
 from VTcolors import *
 
-DEBUG_MODE = False  # Set to True for debugging
-if "--debug" in sys.argv:
-    debug_index = sys.argv.index("--debug")
-    sys.argv.pop(debug_index)
-    DEBUG_MODE = True
-    print_coloured(DEBUG, "mode activated.")
-
 
 def help_build():
     text = """
@@ -110,13 +103,12 @@ def find_verilog_and_scripts(current_directory):
                     elif extension in verilog_extensions:
                         verilog_files.append(os.path.join(root, file))
 
-    if DEBUG_MODE:
-        print_coloured(DEBUG, f"Found verilog files:")
-        for verilog_file in verilog_files:
-            print_coloured(DEBUG, verilog_file)
-        print_coloured(DEBUG, f"Found script files:")
-        for script_file in script_files:
-            print_coloured(DEBUG, script_file)
+    print_coloured(DEBUG, f"Found verilog files:")
+    for verilog_file in verilog_files:
+        print_coloured(DEBUG, verilog_file)
+    print_coloured(DEBUG, f"Found script files:")
+    for script_file in script_files:
+        print_coloured(DEBUG, script_file)
 
     return script_files, verilog_files
 
@@ -191,15 +183,13 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
         content = file.read()
     filename = os.path.basename(file_path)
 
-    module_pattern = r"(.*?)\n?\s*#?\(\n([\s\S]*?)\);\n"
-    inline_module_pattern = r"(?<!\S)(\w+)\s+?(\w+)\s*?\(\.(.+?)\);"
+    module_pattern = r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);"
     include_pattern = r'(?<!\S)`include "(.*?)"(?!\s*?/\*)(.*?)\n'
     include_with_multi_line_comment = (
         r'(?<!\S)`include "(.*?)"\s*/\*\s*?\n([\s\S]*?)\n\s*?\*/\n'
     )
     for pattern in [
         module_pattern,
-        inline_module_pattern,
         include_pattern,
         include_with_multi_line_comment,
     ]:
@@ -325,6 +315,7 @@ def find_most_common_prefix(input_name, file_list):
     input_words = input_name.split("_")
     similar_word_counter = 0
     most_similar_file = ""
+    file_suffix = ""
     for file_path in file_list:
         file_name = os.path.basename(file_path)
         tmp_counter = 0
@@ -338,7 +329,20 @@ def find_most_common_prefix(input_name, file_list):
                     most_similar_file = file_path
                     file_suffix = "_".join(input_words[tmp_counter:])
             tmp_string = tmp_string + "_"
-
+    if most_similar_file == "" and file_suffix == "":
+        print_coloured(
+            DEBUG, f'Could not locate any matching files for "{input_name}".'
+        )
+    elif file_suffix == "":
+        print_coloured(
+            DEBUG,
+            f'The most similar file to "{input_name}" is "{most_similar_file}" and "{input_name}" does not have a suffix at the end of its name.',
+        )
+    else:
+        print_coloured(
+            DEBUG,
+            f'The most similar file to "{input_name}" is "{most_similar_file}" and the suffix is {file_suffix}.',
+        )
     return most_similar_file, file_suffix
 
 
@@ -543,8 +547,7 @@ def create_directory(path):
         os.makedirs(path)
         print_coloured(INFO, f"Created directory '{path}'.")
     except OSError as e:
-        if DEBUG_MODE:
-            print_coloured(DEBUG, f"Did not create directory: {e}")
+        print_coloured(DEBUG, f"Did not create directory: {e}")
 
 
 def parse_arguments():
