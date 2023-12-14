@@ -317,13 +317,13 @@ def find_most_common_prefix(input_name, file_list):
     most_similar_file = ""
     file_suffix = ""
     for file_path in file_list:
-        file_name = os.path.basename(file_path)
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
         tmp_counter = 0
         tmp_string = ""
         for word in input_words:
             tmp_string = tmp_string + word
             tmp_counter = tmp_counter + 1
-            if file_name.startswith(tmp_string):
+            if file_name == tmp_string:
                 if tmp_counter > similar_word_counter:
                     similar_word_counter = tmp_counter
                     most_similar_file = file_path
