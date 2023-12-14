@@ -76,7 +76,7 @@ def find_verilog_and_scripts(current_directory):
     search_directories = []
     excluded_files = ["LICENSE", ".gitignore", ".gitmodules"]
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
-    script_extensions = ["", ".py", ".sh"]
+    script_extensions = [".py", ".sh", ".lua", ".scala", ".rb", ".pl"]
 
     # Find the index of the search_term in the path
     index = sys.argv[0].rfind("MyVT-Tool")
@@ -104,11 +104,11 @@ def find_verilog_and_scripts(current_directory):
                         verilog_files.append(os.path.join(root, file))
 
     print_coloured(DEBUG, f"Found verilog files:")
-    for verilog_file in verilog_files:
-        print_coloured(DEBUG, verilog_file)
+    for file_path in verilog_files:
+        print_coloured(DEBUG, f"\t{relative_path(file_path)}")
     print_coloured(DEBUG, f"Found script files:")
-    for script_file in script_files:
-        print_coloured(DEBUG, script_file)
+    for file_path in script_files:
+        print_coloured(DEBUG, f"\t{relative_path(file_path)}")
 
     return script_files, verilog_files
 
@@ -312,6 +312,7 @@ def find_most_common_prefix(input_name, file_list):
     Returns:
         tuple: A tuple containing the file path and the remaining string words.
     """
+    current_directory = os.getcwd()
     input_words = input_name.split("_")
     similar_word_counter = 0
     most_similar_file = ""
@@ -336,12 +337,12 @@ def find_most_common_prefix(input_name, file_list):
     elif file_suffix == "":
         print_coloured(
             DEBUG,
-            f'The most similar file to "{input_name}" is "{most_similar_file}" and "{input_name}" does not have a suffix at the end of its name.',
+            f'The most similar file to "{input_name}" is "{relative_path(most_similar_file)}" and "{input_name}" does not have a suffix at the end of its name.',
         )
     else:
         print_coloured(
             DEBUG,
-            f'The most similar file to "{input_name}" is "{most_similar_file}" and the suffix is {file_suffix}.',
+            f'The most similar file to "{input_name}" is "{relative_path(most_similar_file)}" and the suffix is {file_suffix}.',
         )
     return most_similar_file, file_suffix
 
@@ -534,6 +535,20 @@ def find_filename_in_list(filename, files_list):
         return found_files
     else:
         return None
+
+
+def relative_path(path):
+    """
+    Convert an absolute path to a relative path based on the current working directory.
+
+    Args:
+        path (str): The absolute path to be converted.
+
+    Returns:
+        str: The relative path derived from the given absolute path.
+    """
+    path = os.path.relpath(path, os.getcwd())
+    return path
 
 
 def create_directory(path):
