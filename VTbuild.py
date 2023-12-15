@@ -176,27 +176,26 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
     or includes. It uses regular expressions to extract relevant information from the file content and then calls the
     find_or_generate function to process the extracted information.
 
-    The module_pattern, inline_module_pattern, include_pattern, and include_with_multi_line_comment are the regular
+    The moduleInstantiationPattern, includePattern, and the multiCommentIncludePattern are the regular
     expressions used to identify module instantiations and includes in the Verilog file.
     """
     with open(file_path, "r") as file:
         content = file.read()
     filename = os.path.basename(file_path)
 
-    modulePattern = r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);"
+    moduleInstantiationPattern = r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);"
     includePattern = r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)'
     multiCommentIncludePattern = r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/'
     for pattern in [
-        modulePattern,
+        moduleInstantiationPattern,
         includePattern,
         multiCommentIncludePattern,
     ]:
         matches = re.findall(pattern, content)
         for item in matches:
-            if not item[0].startswith("module "):
-                sources_list, verilog_files = find_or_generate(
-                    filename, item, script_files, verilog_files, sources_list
-                )
+            sources_list, verilog_files = find_or_generate(
+                filename, item, script_files, verilog_files, sources_list
+            )
 
     return sources_list, verilog_files
 
