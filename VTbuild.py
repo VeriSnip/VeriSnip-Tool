@@ -183,15 +183,13 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
         content = file.read()
     filename = os.path.basename(file_path)
 
-    module_pattern = r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);"
-    include_pattern = r'(?<!\S)`include "(.*?)"(?!\s*?/\*)(.*?)\n'
-    include_with_multi_line_comment = (
-        r'(?<!\S)`include "(.*?)"\s*/\*\s*?\n([\s\S]*?)\n\s*?\*/\n'
-    )
+    modulePattern = r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);"
+    includePattern = r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)'
+    multiCommentIncludePattern = r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/'
     for pattern in [
-        module_pattern,
-        include_pattern,
-        include_with_multi_line_comment,
+        modulePattern,
+        includePattern,
+        multiCommentIncludePattern,
     ]:
         matches = re.findall(pattern, content)
         for item in matches:
@@ -226,7 +224,7 @@ def find_or_generate(
     file_name = match_strings[0].split()[0]
     _, extension = os.path.splitext(file_name)
     if len(match_strings) > 1:
-        comment_arg = match_strings[1]
+        comment_arg = match_strings[1].strip()
 
     if extension == "":
         file_path = find_filename_in_list(f"{file_name}.v", verilog_files)
@@ -488,9 +486,9 @@ def substitute_vs_file(source_file, sources_list):
     with open(source_file, "r") as file:
         for line in file:
             if not on_comment:
-                match = re.search(r'(?<!\S)`include "(.*?)\.vs"(.*)', line)
-                if match:
-                    vs_file = match.group(1) + ".vs"
+                filename_match = re.findall(r'^\s*?`include\s+?"(.+?)\.vs"', line)
+                if filename_match:
+                    vs_file = filename_match[0] + ".vs"
                     vs_file_path = find_filename_in_list(vs_file, sources_list)
 
                     if vs_file_path:
