@@ -236,7 +236,6 @@ def find_or_generate(
         script_path, file_suffix = find_most_common_prefix(file_name, script_files)
         if script_path != "":
             script_arguments = [
-                "python",
                 script_path,
                 file_suffix,
                 comment_arg,
