@@ -16,7 +16,7 @@ import sys, re
 
 from VTcolors import *
 
-vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name_suffix = sys.argv[1].removesuffix(".vs")
 vs_name = f"reg_{vs_name_suffix}.vs"
 
 

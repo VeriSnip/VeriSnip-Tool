@@ -14,7 +14,7 @@
 import re
 from VTcolors import *
 
-vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name_suffix = sys.argv[1].removesuffix(".vs")
 vs_name = f"generated_wires_{vs_name_suffix}.vs"
 
 

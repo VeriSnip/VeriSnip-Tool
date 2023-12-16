@@ -19,7 +19,7 @@ from VTbuild import (
 from VTcolors import *
 from reg import register
 
-vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name_suffix = sys.argv[1].removesuffix(".vs")
 vs_name = f"mmio_{vs_name_suffix}.vs"
 
 assigns = ""

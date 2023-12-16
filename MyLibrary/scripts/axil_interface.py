@@ -12,7 +12,7 @@ from VTbuild import (
 )
 from VTcolors import *
 
-vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name_suffix = sys.argv[1].removesuffix(".vs")
 vs_name = f"axil_interface_{vs_name_suffix}.vs"
 
 last_ios = False

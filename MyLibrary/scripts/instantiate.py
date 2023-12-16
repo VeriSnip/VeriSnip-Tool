@@ -17,7 +17,7 @@ from VTbuild import (
 from VTcolors import *
 from generated_wires import string_eval_arithmetic
 
-vs_name_suffix = sys.argv[1].rstrip(".vs")
+vs_name_suffix = sys.argv[1].removesuffix(".vs")
 vs_name = f"instantiate_{vs_name_suffix}.vs"
 
 callee_module = ""
