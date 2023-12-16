@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 
-from VTcolors import *
+from VTColors import *
 
 
 def help_build():
@@ -76,7 +76,7 @@ def find_verilog_and_scripts(current_directory):
     search_directories = []
     excluded_files = ["LICENSE", ".gitignore", ".gitmodules"]
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
-    script_extensions = [".py", ".sh", ".lua", ".scala", ".rb", ".pl"]
+    script_extensions = [".py", ".sh", ".lua", ".scala", ".rb", ".pl", ".vt"]
 
     # Find the index of the search_term in the path
     index = sys.argv[0].rfind("MyVT-Tool")
