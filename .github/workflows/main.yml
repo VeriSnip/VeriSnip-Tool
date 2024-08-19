@@ -1,0 +1,20 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Build Register
+      run: |
+        ./MyLibrary/scripts/VTBuild.py ./MyLibrary/scripts/reg.py 
+        diff reg.v ./MyLibrary/modules/reg.v
+      shell: bash -el {0}
