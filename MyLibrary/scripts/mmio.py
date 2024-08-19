@@ -12,11 +12,11 @@
 # It depends on: reg.py; generated_wires.py.
 
 import subprocess
-from VTBuild import (
+from vt_build import (
     find_verilog_and_scripts,
     find_filename_in_list,
 )
-from VTColors import *
+from vt_colors import *
 from reg import register
 
 vs_name_suffix = sys.argv[1].removesuffix(".vs")

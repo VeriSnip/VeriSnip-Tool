@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""My Verilog Template (MyVT) is a project designed to bring the power of Verilog scripting to the open-source hardware community. This tool simplifies the generation of Verilog modules or snippets by seamlessly integrating with other programs. The generated files can be easily included in any Verilog project."""
 
 import os
 import re
@@ -6,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from VTColors import *
+from vt_colors import *
 
 
 def help_build():
@@ -529,8 +530,7 @@ def find_filename_in_list(filename, files_list):
 
     if found_files:
         return found_files
-    else:
-        return None
+    return None
 
 
 def relative_path(path):

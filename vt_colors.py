@@ -1,4 +1,7 @@
-import sys, os
+"""This module provides color to the messages printed while using the VT-Tool."""
+
+import sys
+import os
 
 # Based on ANSI escape code
 OKBLUE = "\033[94m"  # Blue
@@ -11,11 +14,12 @@ NORMAL = "\033[0m"  # White
 BOLD = "\033[1m"
 UNDERLINE = "\033[4m"
 
-
-#  Prints the given string with the given text modifier.
-#  Args:
-#    modifier: The text modifier.
-#    string: The string to print.
+"""
+Prints the given string with the given text modifier.
+Args:
+  modifier: The text modifier.
+  string: The string to print.
+"""
 def print_coloured(modifier, string):
     script_name = os.path.basename(sys.argv[0])
     # Check conditions for printing based on arguments and modifier

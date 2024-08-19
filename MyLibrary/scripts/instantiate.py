@@ -8,13 +8,13 @@
 
 import sys, os, re
 import subprocess
-from VTBuild import (
+from vt_build import (
     find_verilog_and_scripts,
     find_or_generate,
     find_filename_in_list,
     substitute_vs_file,
 )
-from VTColors import *
+from vt_colors import *
 from generated_wires import string_eval_arithmetic
 
 vs_name_suffix = sys.argv[1].removesuffix(".vs")
