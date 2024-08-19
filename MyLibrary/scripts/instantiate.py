@@ -14,7 +14,7 @@ from vt_build import (
     find_filename_in_list,
     substitute_vs_file,
 )
-from vt_colors import *
+from vt_colours import *
 from generated_wires import string_eval_arithmetic
 
 vs_name_suffix = sys.argv[1].removesuffix(".vs")

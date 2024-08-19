@@ -4,7 +4,7 @@ import sys
 import os
 
 # Based on ANSI escape code
-OKBLUE = "\033[94m"  # Blue
+OK_BLUE = "\033[94m"  # Blue
 INFO = "\033[96mInfo"  # Cyan
 OK = "\033[92mDone"  # Green
 WARNING = "\033[93mWarning"  # Orange

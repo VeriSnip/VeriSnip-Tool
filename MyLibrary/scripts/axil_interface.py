@@ -10,7 +10,7 @@ from vt_build import (
     find_verilog_and_scripts,
     find_filename_in_list,
 )
-from vt_colors import *
+from vt_colours import *
 
 vs_name_suffix = sys.argv[1].removesuffix(".vs")
 vs_name = f"axil_interface_{vs_name_suffix}.vs"

@@ -16,7 +16,7 @@ from vt_build import (
     find_verilog_and_scripts,
     find_filename_in_list,
 )
-from vt_colors import *
+from vt_colours import *
 from reg import register
 
 vs_name_suffix = sys.argv[1].removesuffix(".vs")

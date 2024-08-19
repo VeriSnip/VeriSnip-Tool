@@ -12,7 +12,7 @@
 # When called from another script an additional argument can passed to create "reg" type signals instead of "wires".
 
 import re
-from vt_colors import *
+from vt_colours import *
 
 vs_name_suffix = sys.argv[1].removesuffix(".vs")
 vs_name = f"generated_wires_{vs_name_suffix}.vs"
