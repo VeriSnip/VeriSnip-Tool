@@ -3,7 +3,7 @@
 */
 `include "timescale.vs"
 
-module MyReg #(
+module Reg #(
     parameter integer DATA_W  = 1,
     parameter integer RST_VAL = {DATA_W{1'b0}}
 ) (
