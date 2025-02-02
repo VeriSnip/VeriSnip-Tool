@@ -2,7 +2,7 @@ module FAdd_tb;
   reg [31:0] a, b;
   wire [31:0] out;
 
-  fadd uut (
+  FAdd uut (
       a,
       b,
       out

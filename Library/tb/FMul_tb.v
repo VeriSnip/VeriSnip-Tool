@@ -2,7 +2,7 @@ module FMul_Tb;
   reg [31:0] a, b;
   wire [31:0] out;
 
-  fmul uut (
+  FMul uut (
       .a  (a),
       .b  (b),
       .out(out)
