@@ -86,6 +86,7 @@ def find_verilog_and_scripts(current_directory):
     else:
         VTBuild_directory = sys.argv[0]
 
+    VTBuild_directory = os.path.abspath(VTBuild_directory)
     search_directories.append(current_directory)
     search_directories.append(VTBuild_directory)
     search_directories += get_included_directories()
@@ -98,11 +99,15 @@ def find_verilog_and_scripts(current_directory):
             directories[:] = filtered_dirs
             for file in files:
                 filename, extension = os.path.splitext(file)
+                file_path = os.path.join(root, file)
                 if filename not in excluded_files:
-                    if extension in script_extensions:
-                        script_files.append(os.path.join(root, file))
-                    elif extension in verilog_extensions:
-                        verilog_files.append(os.path.join(root, file))
+                    if extension in script_extensions and file_path not in script_files:
+                        script_files.append(file_path)
+                    elif (
+                        extension in verilog_extensions
+                        and file_path not in verilog_files
+                    ):
+                        verilog_files.append(file_path)
 
     print_coloured(DEBUG, f"Found verilog files:")
     for file_path in verilog_files:
@@ -329,7 +334,7 @@ def find_most_common_prefix(input_name, file_list):
             tmp_string = tmp_string + "_"
     if most_similar_file == "" and file_suffix == "":
         print_coloured(
-            DEBUG, f'Could not locate any matching files for "{input_name}".'
+            WARNING, f'Could not locate any matching files for "{input_name}".'
         )
     elif file_suffix == "":
         print_coloured(
