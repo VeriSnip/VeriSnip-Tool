@@ -1,12 +1,12 @@
-## MyVT-Overview
-My Verilog Template (MyVT) is a project designed to bring the power of Verilog scripting to the open-source hardware community. This tool simplifies the generation of Verilog modules or snippets by seamlessly integrating with other programs. The generated files can be easily included in any Verilog project.
+## VT-Overview
+Verilog Template (VT) is a project designed to bring the power of Verilog scripting to the open-source hardware community. This tool simplifies the generation of Verilog modules or snippets by seamlessly integrating with other programs. The generated files can be easily included in any Verilog project. The motivation behind this work is so that creating hardware modules is a process of creating a template file written in Verilog and letting your programs/scripts generate the hardware. This scripts are included in your Verilog template file using Verilog snippets.
 
-With MyVT, the process of calling programs or scripts responsible for generating Verilog files is streamlined. After file generation, MyVT neatly organizes all Hardware Description Languages (HDL) and TestBench files under the build directory.
+With VT, the process of calling programs or scripts responsible for generating Verilog files is streamlined. After file generation, VT neatly organizes all Hardware Description Languages (HDL) and TestBench files under the build directory.
 
-Learn more about how MyVT works [here](#how-to-use-myvt).
+Learn more about how VT works [here](#how-to-use-vt).
 
 ### Index
-1. [How to use MyVT (VTBuild.py)](#how-to-use-myvt)
+1. [How to use VT (VTBuild.py)](#how-to-use-vt)
 2. [VTColors.py](#vtcolors)
 3. [MyLibrary](#mylibrary)
 4. [Opening Issues](#opening-an-issue)
@@ -15,8 +15,8 @@ Learn more about how MyVT works [here](#how-to-use-myvt).
 7. [Credits](#credits)
 
 
-## How to use MyVT (aka, VTBuild)
-The **VTBuild** script serves as the cornerstone of MyVT-Tool, encompassing core functions essential for project compilation. This script orchestrates the creation of the build directory, housing Verilog modules and headers crucial for the project's hardware implementation.  
+## How to use VT (aka, VTBuild)
+The **VTBuild** script serves as the cornerstone of VT-Tool, encompassing core functions essential for project compilation. This script orchestrates the creation of the build directory, housing Verilog modules and headers crucial for the project's hardware implementation.  
 The code residing under the `./build` directory represents the compiled output ready for simulation and FPGA synthesis. 
 
 ### Run VTBuild.py
@@ -43,7 +43,7 @@ or
 
 
 ### Using Verilog Snippets (.vs)
-To enable MyVT to search for or generate a Verilog Snippet, users only need to include the corresponding ".vs" file in their Verilog modules. For example:
+To enable VT to search for or generate a Verilog Snippet, users only need to include the corresponding ".vs" file in their Verilog modules. For example:
 ```
 module example (
   `include "example_ios.vs" // Argument passed to the program/script that generates example_ios.vs
@@ -53,9 +53,9 @@ module example (
   */
 endmodule
 ```
-In the above example, MyVT scans for a program or script resembling the Verilog Snippet name (without the file extension). Snippet files must adhere to the snake_case naming convention, which MyVT uses to identify the program/script generating the Snippet file. For instance, the `include "example_ios.vs"` statement corresponds to a program/script named either "example_ios.\*" or "example.\*", where \* represents any supported file extension. Similarly, `include "example_contents.vs"` corresponds to "example_contents.\*" or "example.\*".
+In the above example, VT scans for a program or script resembling the Verilog Snippet name (without the file extension). Snippet files must adhere to the snake_case naming convention, which VT uses to identify the program/script generating the Snippet file. For instance, the `include "example_ios.vs"` statement corresponds to a program/script named either "example_ios.\*" or "example.\*", where \* represents any supported file extension. Similarly, `include "example_contents.vs"` corresponds to "example_contents.\*" or "example.\*".
 
-For another example, refer to the [MyReg module](MyLibrary/modules/MyReg.v). You can run `python3 VTBuild myreg` to execute a small build with MyVT.
+For another example, refer to the [MyReg module](MyLibrary/modules/MyReg.v). You can run `python3 VTBuild myreg` to execute a small build with VT.
 
 **Note:** Avoid including a file in the first line of the file, as this is not supported. Instead, use the file's beginning to provide a brief introduction about its contents.
 
@@ -63,7 +63,7 @@ For another example, refer to the [MyReg module](MyLibrary/modules/MyReg.v). You
 Users have the flexibility to create custom programs or scripts for generating ".vs" files or Verilog modules, or they can utilize existing ones. It's crucial to note that all scripts responsible for generating Verilog code, whether modules or ".vs" files, are independent of "VTBuild." "VTBuild" exclusively calls these scripts without importing them into the project.
 
 **Supported File Extensions and Corresponding Languages:**  
-Currently, MyVT supports programs and scripts with the following file extensions:
+Currently, VT supports programs and scripts with the following file extensions:
 - ".py" for Python
 - ".sh" for Bash
 - ".lua" for Lua
@@ -72,7 +72,7 @@ Currently, MyVT supports programs and scripts with the following file extensions
 - ".pl" for Perl
 - ".vt" for Verilog Template (a custom extension)
 
-The Verilog Template extension (".vt") is specific to MyVT. If you compile a program that generates a Verilog module or snippet, you can use the ".vt" extension to enable MyVT to locate it.
+The Verilog Template extension (".vt") is specific to VT. If you compile a program that generates a Verilog module or snippet, you can use the ".vt" extension to enable VT to locate it.
 
 When VTBuild calls another program ([see example here](VTBuild.py#L238)), it passes a variable number of arguments. Nevertheless, it always follows the same order. Therefore, take into consideration the following arguments and their order when developing your program or script:
 - Path to the program or script being called
@@ -108,7 +108,7 @@ The "MyLibrary" directory contains hardware Verilog modules, snippets and script
 
 ### Scripts
 This section of the README contains information about the scripts present under the `./library/scripts` directory.  
-Read more about each script in the [README.md on the scripts directory](https://github.com/PedroAntunes178/MyVT-Tool/tree/main/MyLibrary/scripts/README.md).
+Read more about each script in the [README.md on the scripts directory](https://github.com/PedroAntunes178/VT-Tool/tree/main/MyLibrary/scripts/README.md).
 
 
 ## Opening an Issue

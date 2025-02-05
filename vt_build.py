@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""My Verilog Template (MyVT) is a project designed to bring the power of Verilog scripting to the open-source hardware community. This tool simplifies the generation of Verilog modules or snippets by seamlessly integrating with other programs. The generated files can be easily included in any Verilog project."""
+"""Verilog Template (VT) is a project designed to bring the power of Verilog scripting to the open-source hardware community. This tool simplifies the generation of Verilog modules or snippets by seamlessly integrating with other programs. The generated files can be easily included in any Verilog project."""
 
 import os
 import re
@@ -80,9 +80,9 @@ def find_verilog_and_scripts(current_directory):
     script_extensions = [".py", ".sh", ".lua", ".scala", ".rb", ".pl", ".vt"]
 
     # Find the index of the search_term in the path
-    index = sys.argv[0].rfind("MyVT-Tool")
+    index = sys.argv[0].rfind("VT-Tool")
     if index != -1:
-        VTBuild_directory = f"{sys.argv[0][:index]}MyVT-Tool"
+        VTBuild_directory = f"{sys.argv[0][:index]}VT-Tool"
     else:
         VTBuild_directory = sys.argv[0]
 
