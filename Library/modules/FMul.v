@@ -15,21 +15,24 @@ module FMul (
   reg [22:0] a_mantissa, b_mantissa;
   reg [23:0] a_man, b_man;
 
-  reg sign;
+  reg out_sign;
   reg [7:0] out_exponent;
-  reg [22:0] mantissa;
+  reg [22:0] out_mantissa;
 
   reg [47:0] product;
-  reg [47:0] product_shifted;
-  reg shift;
+  reg [47:0] product_normalised;
+  reg product_round;
+  reg normalised;
+  reg overflow;
+  reg underflow;
 
-  reg a_is_nan, a_is_inf, a_is_zero;
-  reg b_is_nan, b_is_inf, b_is_zero;
+  reg a_is_nan, a_is_den, a_is_inf, a_is_zero;
+  reg b_is_nan, b_is_den, b_is_inf, b_is_zero;
 
   reg nan, infinity, zero;
   reg [8:0] stored_exponent;
 
-  always @(*) begin
+  always_comb begin
     a_sign = a[31];
     b_sign = b[31];
     a_exponent = a[30:23];
@@ -40,77 +43,54 @@ module FMul (
     // Check for special cases
     a_is_nan = (a_exponent == 8'hFF) && (a_mantissa != 23'd0);
     b_is_nan = (b_exponent == 8'hFF) && (b_mantissa != 23'd0);
+    a_is_den = (a_exponent == 8'h00) && (a_mantissa != 23'd0);
+    b_is_den = (b_exponent == 8'h00) && (b_mantissa != 23'd0);
     a_is_inf = (a_exponent == 8'hFF) && (a_mantissa == 23'd0);
     b_is_inf = (b_exponent == 8'hFF) && (b_mantissa == 23'd0);
     a_is_zero = (a_exponent == 8'h00) && (a_mantissa == 23'd0);
     b_is_zero = (b_exponent == 8'h00) && (b_mantissa == 23'd0);
 
-    nan = 1'b0;
-    infinity = 1'b0;
-    zero = 1'b0;
-
     // Handle NaN, Infinity, and Zero cases
-    if (a_is_nan || b_is_nan) begin
-      nan = 1'b1;
-    end else if ((a_is_inf && b_is_zero) || (b_is_inf && a_is_zero)) begin
-      nan = 1'b1;
-    end else if (a_is_inf || b_is_inf) begin
-      infinity = 1'b1;
-    end else if (a_is_zero || b_is_zero) begin
-      zero = 1'b0;
-      // Check if both are zero to handle sign (negative zero)
-      if (a_is_zero && b_is_zero) begin
-        zero = 1'b1;
-      end
-    end
+    nan = a_is_nan | b_is_nan | (a_is_inf & b_is_zero) | (b_is_inf & a_is_zero);
+    infinity = ~nan & (a_is_inf | b_is_inf);
+    zero = ~nan & (a_is_zero | b_is_zero);
 
+    out_sign = a_sign ^ b_sign;
     if (nan) begin
       out = {1'b0, 8'hFF, 23'h1};  // NaN
     end else if (infinity) begin
-      out = {a_sign ^ b_sign, 8'hFF, 23'd0};  // Infinity
+      out = {out_sign, 8'hFF, 23'd0};  // Infinity
     end else if (zero) begin
-      out = {a_sign ^ b_sign, 8'h00, 23'd0};  // Zero
+      out = {out_sign, 8'h00, 23'd0};  // Zero
     end else begin
       // Normal multiplication
-      a_man   = {1'b1, a_mantissa};
-      b_man   = {1'b1, b_mantissa};
+      a_man   = {~a_is_den, a_mantissa};
+      b_man   = {~b_is_den, b_mantissa};
       product = a_man * b_man;
 
       // Normalize product
-      if (product[47]) begin
-        product_shifted = product >> 1;
-        shift = 1'b1;
+      normalised = product[47];
+      if (normalised) begin
+        product_normalised = product;
       end else begin
-        product_shifted = product;
-        shift = 1'b0;
+        product_normalised = product << 1;
       end
+      product_round = |product_normalised[22:0];
+      out_mantissa = product_normalised[46:24] + (product_normalised[23] & product_round);
 
       // Calculate exponent
-      stored_exponent = {1'b0, a_exponent} + {1'b0, b_exponent} - 9'd127 + {8'b0, shift};
+      stored_exponent = {1'b0, a_exponent} + {1'b0, b_exponent} - 9'd127 + {8'b0, normalised};
+      out_exponent = stored_exponent[7:0];
 
-      // Handle exponent overflow/underflow
-      if (stored_exponent[8] || stored_exponent < 9'd0) begin
-        out_exponent = 8'h00;  // Underflow
-      end else if (stored_exponent > 9'd255) begin
-        out_exponent = 8'hFF;  // Overflow
-      end else begin
-        out_exponent = stored_exponent[7:0];
-      end
-
-      // Extract mantissa
-      if (shift) begin
-        mantissa = product_shifted[46:24];
-      end else begin
-        mantissa = product_shifted[45:23];
-      end
-
+      overflow = ((stored_exponent[8] & !stored_exponent[7]) & !zero);
+      underflow = ((stored_exponent[8] & stored_exponent[7]) & !zero);
       // Final result assembly
-      if (out_exponent == 8'hFF) begin
-        out = {a_sign ^ b_sign, 8'hFF, 23'd0};  // Overflow to infinity
-      end else if (out_exponent == 8'h00) begin
-        out = {a_sign ^ b_sign, 8'h00, 23'd0};  // Underflow to zero
+      if (overflow) begin
+        out = {out_sign, 8'hFF, 23'd0};  // Overflow to infinity
+      end else if (underflow) begin
+        out = {out_sign, 8'h00, 23'd0};  // Underflow to zero
       end else begin
-        out = {a_sign ^ b_sign, out_exponent, mantissa};
+        out = {out_sign, out_exponent, out_mantissa};
       end
     end
   end
