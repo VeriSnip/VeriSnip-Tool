@@ -77,7 +77,7 @@ def find_verilog_and_scripts(current_directory):
     search_directories = []
     excluded_files = ["LICENSE", ".gitignore", ".gitmodules"]
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
-    script_extensions = [".py", ".sh", ".lua", ".scala", ".rb", ".pl", ".vt"]
+    script_extensions = [".py", ".sh", ".lua", ".scala", ".rb", ".pl", ".vt", ".tcl"]
 
     # Find the index of the search_term in the path
     index = sys.argv[0].rfind("VT-Tool")
@@ -393,16 +393,21 @@ def copy_testbench_cpp(TestBench, testbench_dir):
         TestBench (str): The TestBench name.
         testbench_dir (str): The directory for TestBench files.
     """
-    for root, _, files in os.walk("."):
-        if f"{TestBench}.cpp" in files:
-            # Form the source and destination paths
-            source_path = os.path.join(root, f"{TestBench}.cpp")
-            destination_path = os.path.join(testbench_dir, f"{TestBench}.cpp")
+    for root, directories, files in os.walk(os.path.abspath("."), topdown=True):
+            filtered_dirs = []
+            for directory in directories:
+                if directory not in [".git", "build", "generated", "__pycache__"]:
+                    filtered_dirs.append(directory)
+            directories[:] = filtered_dirs
+            if f"{TestBench}.cpp" in files:
+                # Form the source and destination paths
+                source_path = os.path.join(root, f"{TestBench}.cpp")
+                destination_path = os.path.join(testbench_dir, f"{TestBench}.cpp")
 
-            # Copy the file to the testbench_dir
-            shutil.copy(source_path, destination_path)
-            print_coloured(INFO, f"File '{source_path}' copied to '{destination_path}'")
-            return
+                # Copy the file to the testbench_dir
+                shutil.copy(source_path, destination_path)
+                print_coloured(INFO, f"Testbench '{source_path}' copied to '{destination_path}'")
+                return
 
     print_coloured(
         INFO,
