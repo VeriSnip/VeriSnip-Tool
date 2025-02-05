@@ -3,9 +3,9 @@ module FAdd_tb;
   wire [31:0] out;
 
   FAdd uut (
-      a,
-      b,
-      out
+      .a(a),
+      .b(b),
+      .out(out)
   );
 
   initial begin

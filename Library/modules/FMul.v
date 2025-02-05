@@ -20,9 +20,9 @@ module FMul (
   reg [22:0] out_mantissa;
 
   reg [47:0] product;
-  reg [47:0] product_normalised;
+  reg [46:0] product_normalized;
   reg product_round;
-  reg normalised;
+  reg normalized;
   reg overflow;
   reg underflow;
 
@@ -56,42 +56,37 @@ module FMul (
     zero = ~nan & (a_is_zero | b_is_zero);
 
     out_sign = a_sign ^ b_sign;
+    // Normal multiplication
+    a_man = {~a_is_den, a_mantissa};
+    b_man = {~b_is_den, b_mantissa};
+    product = a_man * b_man;
+
+    // Normalize product
+    normalized = product[47];
+    if (normalized) begin
+      product_normalized = product[46:0];
+    end else begin
+      product_normalized = {product[45:0],1'b0};
+    end
+    product_round = |product_normalized[22:0];
+    out_mantissa = product_normalized[46:24] + {22'd0, (product_normalized[23] & product_round)};
+
+    // Calculate exponent
+    stored_exponent = {1'b0, a_exponent} + {1'b0, b_exponent} - 9'd127 + {8'b0, normalized};
+    out_exponent = stored_exponent[7:0];
+
+    overflow = ((stored_exponent[8] & !stored_exponent[7]) & !zero);
+    underflow = ((stored_exponent[8] & stored_exponent[7]) & !zero);
+    // Final result assembly
+
     if (nan) begin
       out = {1'b0, 8'hFF, 23'h1};  // NaN
-    end else if (infinity) begin
+    end else if (infinity | overflow) begin
       out = {out_sign, 8'hFF, 23'd0};  // Infinity
-    end else if (zero) begin
+    end else if (zero | underflow) begin
       out = {out_sign, 8'h00, 23'd0};  // Zero
     end else begin
-      // Normal multiplication
-      a_man   = {~a_is_den, a_mantissa};
-      b_man   = {~b_is_den, b_mantissa};
-      product = a_man * b_man;
-
-      // Normalize product
-      normalised = product[47];
-      if (normalised) begin
-        product_normalised = product;
-      end else begin
-        product_normalised = product << 1;
-      end
-      product_round = |product_normalised[22:0];
-      out_mantissa = product_normalised[46:24] + (product_normalised[23] & product_round);
-
-      // Calculate exponent
-      stored_exponent = {1'b0, a_exponent} + {1'b0, b_exponent} - 9'd127 + {8'b0, normalised};
-      out_exponent = stored_exponent[7:0];
-
-      overflow = ((stored_exponent[8] & !stored_exponent[7]) & !zero);
-      underflow = ((stored_exponent[8] & stored_exponent[7]) & !zero);
-      // Final result assembly
-      if (overflow) begin
-        out = {out_sign, 8'hFF, 23'd0};  // Overflow to infinity
-      end else if (underflow) begin
-        out = {out_sign, 8'h00, 23'd0};  // Underflow to zero
-      end else begin
-        out = {out_sign, out_exponent, out_mantissa};
-      end
+      out = {out_sign, out_exponent, out_mantissa};
     end
   end
 

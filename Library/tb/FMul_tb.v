@@ -1,4 +1,4 @@
-module FMul_Tb;
+module FMul_tb;
   reg [31:0] a, b;
   wire [31:0] out;
 
