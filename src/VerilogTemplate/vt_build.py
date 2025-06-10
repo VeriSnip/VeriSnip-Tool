@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from vt_colours import INFO, OK, WARNING, ERROR, DEBUG, print_coloured
+from VerilogTemplate.vt_colours import INFO, OK, WARNING, ERROR, DEBUG, print_coloured
 
 
 def help_build():
@@ -615,8 +615,12 @@ def parse_arguments():
     return module_name, testbench_name, board_modules
 
 
-# Check if this script is called directly
-if __name__ == "__main__":
+def main():
+    """
+    Main function to handle the VTBuild script execution.
+    It processes command-line arguments, cleans the build directory if requested,
+    and builds the RTL, TestBench, and board modules as specified.
+    """
     current_directory = os.getcwd()
     if len(sys.argv) < 2 or sys.argv[1] == "--help":
         help_build()
@@ -632,3 +636,8 @@ if __name__ == "__main__":
                 board_modules, main_module, verilog_files, script_files, rtl_sources
             )
             print_coloured(OK, f"Created {main_module} project build directory.")
+
+
+# Check if this script is called directly
+if __name__ == "__main__":
+    main()

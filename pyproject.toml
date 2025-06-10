@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "VerilogTemplate"
-version = "1.0.1"
+version = "0.0.2"
 authors = [
   { name="Pedro Nuno de Melo Antunes", email="pedronmantunes@gmail.com" },
 ]
@@ -22,3 +22,6 @@ license-files = ["LICENSE"]
 [project.urls]
 Homepage = "https://github.com/LogicoreDesign/VT-Tool.git"
 Issues = "https://github.com/LogicoreDesign/VT-Tool/issues"
+
+[project.scripts]
+vt_build = "VerilogTemplate.vt_build:main"
