@@ -1,11 +1,11 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: "Antunes"
-  given-names: "Pedro"
-  orcid: "https://orcid.org/0000-0000-0000-0000"
-title: "MyVT-Tool"
-version: 1.0.0
+- family-names: "de Melo Antunes"
+  given-names: "Pedro Nuno"
+  orcid: "https://orcid.org/0000-0002-6158-6928"
+title: "VT-Tool"
+version: 1.0.1
 doi: 
-date-released: 2024-08-19
-url: "https://github.com/MyCircuit-Hub/MyVT-Tool"
+date-released: 2025-06-10
+url: "https://github.com/LogicoreDesign/VT-Tool.git"

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "VerilogTemplate"
+version = "1.0.1"
+authors = [
+  { name="Pedro Nuno de Melo Antunes", email="pedronmantunes@gmail.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+
+[project.urls]
+Homepage = "https://github.com/LogicoreDesign/VT-Tool.git"
+Issues = "https://github.com/LogicoreDesign/VT-Tool/issues"

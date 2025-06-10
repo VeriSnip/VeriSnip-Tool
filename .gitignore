@@ -1,4 +1,3 @@
 # Ignored directories
 *__pycache__
-build
-hardware/generated
+dist
