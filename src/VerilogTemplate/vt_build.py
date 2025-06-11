@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from VerilogTemplate.vt_colours import INFO, OK, WARNING, ERROR, DEBUG, print_coloured
+from .vt_colours import INFO, OK, WARNING, ERROR, DEBUG, print_coloured
 
 
 def help_build():
@@ -135,7 +135,7 @@ def get_included_directories():
     return included_directories
 
 
-def fetch_sources(verilog_files, script_files, top_module):
+def fetch_sources(current_directory, verilog_files, script_files, top_module):
     """
     Fetch Verilog files, generating them if necessary.
 
@@ -149,7 +149,12 @@ def fetch_sources(verilog_files, script_files, top_module):
     """
     sources_list = []
     sources_list, verilog_files = find_or_generate(
-        "", tuple([top_module]), script_files, verilog_files, sources_list
+        current_directory,
+        "",
+        tuple([top_module]),
+        script_files,
+        verilog_files,
+        sources_list,
     )
     generated_path = f"{current_directory}/generated"
     create_directory(generated_path)
@@ -158,14 +163,16 @@ def fetch_sources(verilog_files, script_files, top_module):
     while i < len(sources_list):
         verilog_file = sources_list[i]
         sources_list, verilog_files = analyse_file(
-            verilog_file, script_files, verilog_files, sources_list
+            current_directory, verilog_file, script_files, verilog_files, sources_list
         )
         i = i + 1
 
     return sources_list
 
 
-def analyse_file(file_path, script_files, verilog_files, sources_list):
+def analyse_file(
+    current_directory, file_path, script_files, verilog_files, sources_list
+):
     """
     Analyze a Verilog file for module instantiations or includes.
 
@@ -200,14 +207,24 @@ def analyse_file(file_path, script_files, verilog_files, sources_list):
         matches = re.findall(pattern, content)
         for item in matches:
             sources_list, verilog_files = find_or_generate(
-                filename, item, script_files, verilog_files, sources_list
+                current_directory,
+                filename,
+                item,
+                script_files,
+                verilog_files,
+                sources_list,
             )
 
     return sources_list, verilog_files
 
 
 def find_or_generate(
-    callee_filename, match_strings, script_files, verilog_files, sources_list
+    current_directory,
+    callee_filename,
+    match_strings,
+    script_files,
+    verilog_files,
+    sources_list,
 ):
     """
     Find or generate a file based on given conditions.
@@ -224,7 +241,6 @@ def find_or_generate(
         sources_list (list): Updated list containing the generated or found file paths.
         verilog_files (list): Updated list of Verilog file paths.
     """
-    current_directory = os.getcwd()
     file_path = None
     file_name = match_strings[0].split()[0]
     _, extension = os.path.splitext(file_name)
@@ -279,7 +295,7 @@ def move_to_generated_dir(script_path, current_directory, sources_list, verilog_
     """
     verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
     verilog_files_found = []
-    generated_dir = os.path.join(current_directory, "generated/RTL")
+    generated_dir = os.path.join(current_directory, "generated")
 
     for filename in os.listdir(current_directory):
         _, extension = os.path.splitext(filename)
@@ -314,7 +330,6 @@ def find_most_common_prefix(input_name, file_list):
     Returns:
         tuple: A tuple containing the file path and the remaining string words.
     """
-    current_directory = os.getcwd()
     input_words = input_name.split("_")
     similar_word_counter = 0
     most_similar_file = ""
@@ -349,7 +364,7 @@ def find_most_common_prefix(input_name, file_list):
     return most_similar_file, file_suffix
 
 
-def rtl_build(module, verilog_files, script_files):
+def rtl_build(current_directory, module, verilog_files, script_files):
     """
     Builds Verilog files and creates a build directory for RTL sources.
 
@@ -362,13 +377,15 @@ def rtl_build(module, verilog_files, script_files):
         list: The list of RTL Verilog source files.
     """
     rtl_dir = f"{current_directory}/build/RTL"
-    rtl_sources = fetch_sources(verilog_files, script_files, module)
+    rtl_sources = fetch_sources(current_directory, verilog_files, script_files, module)
     verilog_copy(rtl_sources, [], rtl_dir)
     print_coloured(OK, "Built all RTL sources.")
     return rtl_sources
 
 
-def testbench_build(TestBench, verilog_files, script_files, rtl_sources):
+def testbench_build(
+    current_directory, TestBench, verilog_files, script_files, rtl_sources
+):
     """
     Builds TestBench Verilog files and creates a build directory.
 
@@ -379,7 +396,9 @@ def testbench_build(TestBench, verilog_files, script_files, rtl_sources):
         rtl_sources (list): List of RTL Verilog source files.
     """
     testbench_dir = f"{current_directory}/build/TestBench"
-    testbench_sources = fetch_sources(verilog_files, script_files, TestBench)
+    testbench_sources = fetch_sources(
+        current_directory, verilog_files, script_files, TestBench
+    )
     verilog_copy(testbench_sources, rtl_sources, testbench_dir)
     copy_testbench_cpp(TestBench, testbench_dir)
     print_coloured(OK, "Built all TestBench sources.")
@@ -394,20 +413,22 @@ def copy_testbench_cpp(TestBench, testbench_dir):
         testbench_dir (str): The directory for TestBench files.
     """
     for root, directories, files in os.walk(os.path.abspath("."), topdown=True):
-            filtered_dirs = []
-            for directory in directories:
-                if directory not in [".git", "build", "generated", "__pycache__"]:
-                    filtered_dirs.append(directory)
-            directories[:] = filtered_dirs
-            if f"{TestBench}.cpp" in files:
-                # Form the source and destination paths
-                source_path = os.path.join(root, f"{TestBench}.cpp")
-                destination_path = os.path.join(testbench_dir, f"{TestBench}.cpp")
+        filtered_dirs = []
+        for directory in directories:
+            if directory not in [".git", "build", "generated", "__pycache__"]:
+                filtered_dirs.append(directory)
+        directories[:] = filtered_dirs
+        if f"{TestBench}.cpp" in files:
+            # Form the source and destination paths
+            source_path = os.path.join(root, f"{TestBench}.cpp")
+            destination_path = os.path.join(testbench_dir, f"{TestBench}.cpp")
 
-                # Copy the file to the testbench_dir
-                shutil.copy(source_path, destination_path)
-                print_coloured(INFO, f"Testbench '{source_path}' copied to '{destination_path}'")
-                return
+            # Copy the file to the testbench_dir
+            shutil.copy(source_path, destination_path)
+            print_coloured(
+                INFO, f"Testbench '{source_path}' copied to '{destination_path}'"
+            )
+            return
 
     print_coloured(
         INFO,
@@ -415,7 +436,9 @@ def copy_testbench_cpp(TestBench, testbench_dir):
     )
 
 
-def board_build(Boards, main_module, verilog_files, script_files, rtl_sources):
+def board_build(
+    current_directory, Boards, main_module, verilog_files, script_files, rtl_sources
+):
     """
     Builds Verilog files for specified boards and creates a build directory.
 
@@ -431,7 +454,9 @@ def board_build(Boards, main_module, verilog_files, script_files, rtl_sources):
         if Board.startswith(main_module):
             Board_name = Board[len(main_module) :].lstrip("_")
         Board_dir = f"{current_directory}/build/RTL/{Board_name}"
-        Board_sources = fetch_sources(verilog_files, script_files, Board)
+        Board_sources = fetch_sources(
+            current_directory, verilog_files, script_files, Board
+        )
         verilog_copy(Board_sources, rtl_sources, Board_dir)
         print_coloured(OK, f"Built all {Board_name} sources.")
 
@@ -630,10 +655,19 @@ def main():
         main_module, testbench, board_modules = parse_arguments()
         if main_module != None:
             script_files, verilog_files = find_verilog_and_scripts(current_directory)
-            rtl_sources = rtl_build(main_module, verilog_files, script_files)
-            testbench_build(testbench, verilog_files, script_files, rtl_sources)
+            rtl_sources = rtl_build(
+                current_directory, main_module, verilog_files, script_files
+            )
+            testbench_build(
+                current_directory, testbench, verilog_files, script_files, rtl_sources
+            )
             board_build(
-                board_modules, main_module, verilog_files, script_files, rtl_sources
+                current_directory,
+                board_modules,
+                main_module,
+                verilog_files,
+                script_files,
+                rtl_sources,
             )
             print_coloured(OK, f"Created {main_module} project build directory.")
 
