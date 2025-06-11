@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from .vt_colours import INFO, OK, WARNING, ERROR, DEBUG, print_coloured
+from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, print_coloured
 
 
 def help_build():
