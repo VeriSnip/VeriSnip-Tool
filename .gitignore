@@ -1,4 +1,5 @@
 # Ignored directories
 *__pycache__
+.venv
 dist
 *.egg-info
