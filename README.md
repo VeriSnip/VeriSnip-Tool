@@ -49,11 +49,11 @@ or
 
 ### Using Verilog Snippets (.vs)
 
-To enable VeriSnip to search for or generate a Verilog Snippet, users only need to include the corresponding ".vs" file in their Verilog modules. For example:
+Users need to include the corresponding `.vs` file in their Verilog modules to enable VeriSnip to search for or generate a Verilog Snippet. For example:
 
-```
+```verilog
 module example (
-  `include "example_ios.vs" // Argument passed to the program/script that generates example_ios.vs
+  `include "example_ios.vs" // VS_NO_GENERATE
 );
   `include "example_contents.vs" /*
     Argument passed to the program/script that generates example_contents.vs
@@ -61,11 +61,17 @@ module example (
 endmodule
 ```
 
-In the above example, VeriSnip scans for a program or script resembling the Verilog Snippet name (without the file extension). Snippet files must adhere to the snake\_case naming convention, which VeriSnip uses to identify the program/script generating the Snippet file. For instance, the `include "example_ios.vs"` statement corresponds to a program/script named either "example\_ios.*" or "example.*", where \* represents any supported file extension. Similarly, `include "example_contents.vs"` corresponds to "example\_contents.*" or "example.*".
+In the above example, VeriSnip scans for a program or script whose name resembles the Verilog Snippet name (excluding the file extension).  
+The statement `include "example_contents.vs"` corresponds to a program or script named either `example.*` or `example_contents.*`, where `*` represents any supported file extension.  
 
-For another example, refer to the [MyReg module](MyLibrary/modules/MyReg.v). You can run `python3 *vs_build* myreg` to execute a small build with VeriSnip.
+Since `include "example_ios.vs"` is followed by `VS_NO_GENERATE`, VeriSnip will ignore this file and will not attempt to generate it.  
+The file can be generated later by another include statement if necessary.
 
-**Note:** Avoid including a file in the first line of the file, as this is not supported. Instead, use the file's beginning to provide a brief introduction about its contents.
+For another example, refer to the [MyReg module](MyLibrary/modules/MyReg.v).  
+You can run `vs_build myreg` to execute a small build with VeriSnip.
+
+**Note:** Avoid including a file on the first line of a Verilog source file, as this is not supported.  
+Instead, use the beginning of the file to provide a brief introduction or description of its contents.
 
 ### Creating a Compatible Program/Script for Verilog Snippet Generation
 
