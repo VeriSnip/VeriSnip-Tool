@@ -251,7 +251,7 @@ def find_or_generate(
             file_name, script_files, comment_arg, callee_filename,
             current_directory, sources_list, verilog_files
         )
-    else:
+    elif file_path not in sources_list:
         sources_list.append(file_path)
 
     return sources_list, verilog_files
@@ -537,7 +537,7 @@ def filter_list(target_list, source_list):
 
     # Iterate through target_list and only add elements not present in source_list to filtered_list
     for element in target_list:
-        if (element not in source_list) or (element.endswith(".vs")):
+        if element not in source_list:
             filtered_list.append(element)
 
     return filtered_list
@@ -599,7 +599,7 @@ def find_filename_in_list(filename, files_list):
             if found_files != None:
                 print_coloured(
                     WARNING,
-                    f"Found more than one directory with file {filename}.",
+                    f"Found more than one directory with file {filename}.\n  {file}",
                 )
             found_files = file
 
