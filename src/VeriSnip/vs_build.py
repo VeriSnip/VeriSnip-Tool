@@ -60,7 +60,7 @@ def remove_directory(directory_to_remove):
         print_coloured(WARNING, f"Could not remove directory. {e}")
 
 
-def find_verilog_and_scripts(current_directory):
+def find_files(current_directory):
     """
     Finds all Verilog snippets, modules, and scripts under the given directory.
 
@@ -145,10 +145,8 @@ def fetch_sources(current_directory, verilog_files, script_files, top_module):
         verilog_files,
         sources_list,
     )
-    generated_path = f"{current_directory}/generated"
-    create_directory(generated_path)
-    i = 0
 
+    i = 0
     while i < len(sources_list):
         verilog_file = sources_list[i]
         sources_list, verilog_files = analyse_file(
@@ -219,6 +217,7 @@ def find_or_generate(
     Find or generate a file based on given conditions.
 
     Args:
+        current_directory (str): The current working directory.
         callee_filename (str): Name of the file where the "`include" is present.
         match_strings (list): List of strings extracted from the include directive.
                               Index 0: File name, Index 1: Comment argument.
@@ -227,51 +226,93 @@ def find_or_generate(
         sources_list (list): List to store the generated or found file paths.
 
     Returns:
-        sources_list (list): Updated list containing the generated or found file paths.
-        verilog_files (list): Updated list of Verilog file paths.
+        tuple: (sources_list, verilog_files) - Updated lists containing the 
+               generated or found file paths.
     """
-    file_path = None
+    # Extract file information from match strings
     file_name = match_strings[0].split()[0]
     _, extension = os.path.splitext(file_name)
-    if len(match_strings) > 1:
-        comment_arg = match_strings[1].strip()
-    else:
-        comment_arg = ""
+    comment_arg = match_strings[1].strip() if len(match_strings) > 1 else ""
 
-    if extension == "":
-        file_path = find_filename_in_list(f"{file_name}.v", verilog_files)
-        if file_path is None:
-            file_path = find_filename_in_list(f"{file_name}.sv", verilog_files)
-    else:
-        file_path = find_filename_in_list(file_name, verilog_files)
+    # Try to locate the file in the verilog_files list
+    file_path = _find_verilog_file(file_name, extension, verilog_files)
+
+    # Handle VS_NO_GENERATE directive
     if "VS_NO_GENERATE" in comment_arg:
         print_coloured(
             INFO,
             f"File {file_name} is ignored due to 'VS_NO_GENERATE' comment in {callee_filename}.",
         )
-    else:
-        if file_path is None:
-            script_path, file_suffix = find_most_common_prefix(file_name, script_files)
-            if script_path != "":
-                script_arguments = [
-                    script_path,
-                    file_suffix,
-                    comment_arg,
-                    callee_filename,
-                ] + sys.argv[1:]
-                subprocess.run(script_arguments)
-                sources_list, verilog_files = move_to_generated_dir(
-                    script_path, current_directory, sources_list, verilog_files
-                )
-        else:
-            if file_path not in sources_list:
-                sources_list.append(file_path)
-            if extension == "":
-                file_name = f"{file_name}.[v/sv]"
-            print_coloured(
-                INFO, f"File {file_name} exists under the current directory."
-            )
+        return sources_list, verilog_files
 
+    # Process the file: generate if not found, add to sources if found
+    if file_path is None:
+        sources_list, verilog_files = _generate_file_from_script(
+            file_name, script_files, comment_arg, callee_filename,
+            current_directory, sources_list, verilog_files
+        )
+    else:
+        sources_list.append(file_path)
+
+    return sources_list, verilog_files
+
+
+def _find_verilog_file(file_name, extension, verilog_files):
+    """
+    Find a Verilog file by name, trying multiple extensions if none specified.
+
+    Args:
+        file_name (str): The base file name.
+        extension (str): The file extension (may be empty).
+        verilog_files (list): List of available Verilog file paths.
+
+    Returns:
+        str or None: The path to the found file, or None if not found.
+    """
+    if extension == "":
+        # Try .v first, then .sv
+        file_path = find_filename_in_list(f"{file_name}.v", verilog_files)
+        if file_path is None:
+            file_path = find_filename_in_list(f"{file_name}.sv", verilog_files)
+        return file_path
+    else:
+        return find_filename_in_list(file_name, verilog_files)
+
+
+def _generate_file_from_script(
+    file_name, script_files, comment_arg, callee_filename,
+    current_directory, sources_list, verilog_files
+):
+    """
+    Generate a file using a matching script.
+
+    Args:
+        file_name (str): The name of the file to generate.
+        script_files (list): List of available script file paths.
+        comment_arg (str): Comment arguments from the include directive.
+        callee_filename (str): Name of the file requesting generation.
+        current_directory (str): The current working directory.
+        sources_list (list): Current list of source files.
+        verilog_files (list): Current list of Verilog files.
+
+    Returns:
+        tuple: Updated (sources_list, verilog_files).
+    """
+    script_path, file_suffix = find_most_common_prefix(file_name, script_files)
+    
+    if script_path != "":
+        script_arguments = [
+            script_path,
+            file_suffix,
+            comment_arg,
+            callee_filename,
+        ] + sys.argv[1:]
+        subprocess.run(script_arguments)
+        
+        return move_to_generated_dir(
+            script_path, current_directory, sources_list, verilog_files
+        )
+    
     return sources_list, verilog_files
 
 
@@ -362,7 +403,7 @@ def find_most_common_prefix(input_name, file_list):
     return most_similar_file, file_suffix
 
 
-def rtl_build(current_directory, module, verilog_files, script_files):
+def rtl_build(current_directory, module, parameters, verilog_files, script_files):
     """
     Builds Verilog files and creates a build directory for RTL sources.
 
@@ -374,6 +415,7 @@ def rtl_build(current_directory, module, verilog_files, script_files):
     Returns:
         list: The list of RTL Verilog source files.
     """
+    create_directory(f"{current_directory}/generated")
     rtl_dir = f"{current_directory}/build/RTL"
     rtl_sources = fetch_sources(current_directory, verilog_files, script_files, module)
     verilog_copy(rtl_sources, [], rtl_dir)
@@ -671,9 +713,9 @@ def main():
             clean_build(current_directory)
         main_module, testbench, board_modules, parameters = parse_arguments()
         if main_module != None:
-            script_files, verilog_files = find_verilog_and_scripts(current_directory)
+            script_files, verilog_files = find_files(current_directory)
             rtl_sources = rtl_build(
-                current_directory, main_module, verilog_files, script_files
+                current_directory, main_module, parameters, verilog_files, script_files
             )
             testbench_build(
                 current_directory, testbench, verilog_files, script_files, rtl_sources
