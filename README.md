@@ -57,12 +57,12 @@ module example (
 );
   `include "example_contents.vs" /*
     Argument passed to the program/script that generates example_contents.vs
+    {MODULE_PARAM}
   */
 endmodule
 ```
 
-In the above example, VeriSnip scans for a program or script whose name resembles the Verilog Snippet name (excluding the file extension).  
-The statement `include "example_contents.vs"` corresponds to a program or script named either `example.*` or `example_contents.*`, where `*` represents any supported file extension.  
+VeriSnip searches for a program or script whose name matches the `.vs` filename (without the extension). For example, `include "example_contents.vs"` will match a script named `example_contents.*` or `example.*` (any supported extension). Arguments for the script are provided in the comment that immediately follows the `include`. Enclose module parameters in braces: `{...}` to replace them by their value before calling the curresponding script.
 
 Since `include "example_ios.vs"` is followed by `VS_NO_GENERATE`, VeriSnip will ignore this file and will not attempt to generate it.  
 The file can be generated later by another include statement if necessary.
@@ -124,7 +124,7 @@ When *vs\_build* calls another program ([see example here](*vs_build*.py#L238)),
 ## *vs\_colours*
 
 This script defines the colors that should be used when printing error, warning or successful messages.
-It defines the `print_coloured()` function and some variables that allow to modify the text printed to the console.
+It defines the `vs_print()` function and some variables that allow to modify the text printed to the console.
 
 ## MyLibrary
 

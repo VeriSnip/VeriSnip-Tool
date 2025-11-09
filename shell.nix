@@ -6,6 +6,8 @@ pkgs.mkShell {
   buildInputs = [
     pkgs.python3
     pkgs.python3Packages.virtualenv
+    pkgs.python3Packages.build
+    pkgs.python3Packages.twine
   ];
 
   shellHook = ''

@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "VeriSnip"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
   { name="Pedro Nuno de Melo Antunes", email="pedronmantunes@gmail.com" },
 ]
-description = "A small example package"
+description = "A framework to integrade scripting into hardware design."
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
