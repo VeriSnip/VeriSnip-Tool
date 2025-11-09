@@ -14,7 +14,7 @@ NORMAL = "\033[0m"  # White
 BOLD = "\033[1m"
 UNDERLINE = "\033[4m"
 
-def print_coloured(modifier, string):
+def vs_print(modifier, string):
     """This function prints the given string with the given text modifier.
     Args:
         modifier: The text modifier.
