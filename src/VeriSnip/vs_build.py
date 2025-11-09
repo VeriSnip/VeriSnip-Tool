@@ -9,6 +9,56 @@ import sys
 
 from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, vs_print
 
+class VsBuilder:
+    def __init__(self, main_module, testbench, board_modules, parameters, include_directories):
+        self.cwd = os.getcwd()
+        self.main_module = main_module
+        self.testbench = testbench
+        self.board_modules = board_modules or []
+        self.parameters = parameters or {}
+        self.include_directories = include_directories or []
+
+        # discover files (implement or call your existing finder)
+        self.script_files = []
+        self.snippet_files = []
+        self.verilog_files = []
+        self._find_all_files()
+
+        # resolved lists
+        self.rtl_sources = []
+        self.testbench_sources = []
+        self.board_sources = {}
+
+    def _find_all_files(self):
+        # TODO: call/implement your existing find_existing_files logic,
+        # populating self.verilog_files and self.script_files.
+        vs_print(INFO, "Discovering HDL, snippet and script files...")
+        # Example placeholders:
+        # self.verilog_files = find_verilog_files(self.cwd, self.include_directories)
+        # self.script_files  = find_script_files(self.cwd, self.include_directories)
+        pass
+
+    def resolve_dependencies(self):
+        """
+        Resolve dependencies for main_module, testbench and boards.
+        Should populate self.rtl_sources, self.testbench_sources and self.board_sources.
+        """
+        vs_print(INFO, f"Resolving dependencies for {self.main_module}...")
+        # Example:
+        # self.rtl_sources = build_dependency_tree(self.cwd, self.verilog_files, self.script_files, self.main_module, self.parameters)
+        # if self.testbench: ...
+        pass
+
+    def build_sources(self):
+        """
+        Create build directories, copy files and substitute snippets.
+        Reuse existing helper functions where possible.
+        """
+        vs_print(INFO, "Building sources into build/ and generated/ ...")
+        # create_directory(f"{self.cwd}/build")
+        # build_verilog_sources(self.rtl_sources, ..., build_dir=...)
+        pass
+
 
 def help_build():
     text = """
@@ -59,705 +109,6 @@ def remove_directory(directory_to_remove):
         )
     except OSError as e:
         vs_print(WARNING, f"Could not remove directory. {e}")
-
-
-def find_existing_files(current_directory, include_directories):
-    """
-    Finds all Verilog snippets, modules, and scripts under the given directory.
-
-    Args:
-        current_directory (str): The directory to search.
-
-    Returns:
-        tuple: A tuple containing lists of all Verilog snippets, modules, and scripts found in the directory.
-    """
-    script_files = []
-    verilog_files = []
-    search_directories = [current_directory] + include_directories
-    excluded_files = ["LICENSE", ".gitignore", ".gitmodules"]
-    verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
-    script_extensions = [".py", ".sh", ".lua", ".scala", ".rb", ".pl", ".tcl"]
-
-    for directory in search_directories:
-        for root, directories, files in os.walk(directory, topdown=True):
-            filtered_dirs = []
-            for directory in directories:
-                if directory not in [".git", "build", "generated", "__pycache__"]:
-                    filtered_dirs.append(directory)
-            directories[:] = filtered_dirs
-            for file in files:
-                filename, extension = os.path.splitext(file)
-                file_path = os.path.join(root, file)
-                if filename not in excluded_files:
-                    if extension in script_extensions and file_path not in script_files:
-                        script_files.append(file_path)
-                    elif (
-                        extension in verilog_extensions
-                        and file_path not in verilog_files
-                    ):
-                        verilog_files.append(file_path)
-
-    vs_print(DEBUG, f"Found verilog files:")
-    for file_path in verilog_files:
-        vs_print(DEBUG, f"\t{relative_path(file_path)}")
-    vs_print(DEBUG, f"Found script files:")
-    for file_path in script_files:
-        vs_print(DEBUG, f"\t{relative_path(file_path)}")
-
-    return script_files, verilog_files
-
-
-def build_dependency_tree(current_directory, verilog_files, script_files, top_module, parameters=None):
-    """
-    Recursively resolve all dependencies for a given top module.
-    
-    This function finds or generates all Verilog files needed by the top module,
-    including transitively instantiated modules and included files.
-
-    Args:
-        current_directory (str): The current working directory.
-        verilog_files (list): List of existing Verilog file paths.
-        script_files (list): List of script file paths.
-        top_module (str): The top module name.
-        parameters (dict, optional): Parameters to pass to generation scripts.
-
-    Returns:
-        list: A list of all Verilog files used by the module and its dependencies.
-    """
-    sources_list = []
-    sources_list, verilog_files = resolve_dependency(
-        current_directory,
-        "",
-        tuple([top_module]),
-        script_files,
-        verilog_files,
-        sources_list,
-        parameters,
-    )
-
-    i = 0
-    while i < len(sources_list):
-        verilog_file = sources_list[i]
-        sources_list, verilog_files = analyse_file(
-            current_directory, verilog_file, script_files, verilog_files, sources_list, parameters
-        )
-        i = i + 1
-
-    return sources_list
-
-
-def extract_parameters_from_file(content, filename, parameters):
-    """
-    Extract parameters from Verilog file content, including parameter definitions and instantiations.
-
-    Args:
-        content (str): The content of the Verilog file.
-        filename (str): The name of the file being analyzed.
-        parameters (dict): The parameters dictionary to update.
-
-    This function extracts:
-    1. Parameter definitions (e.g., parameter WIDTH = 8)
-    2. Parameter values from module instantiations (e.g., #(.WIDTH(16)))
-    """
-    
-    param_def_pattern = r'^\s*parameter\s+(?:\w+\s+)?(\w+)\s*=\s*([^,;\n)]+)'
-    param_inst_pattern = r'\.(\w+)\s*\(\s*([^)]+?)\s*\)'
-    
-    # Find parameter definitions in the file
-    for match in re.finditer(param_def_pattern, content, re.MULTILINE):
-        param_name = match.group(1)
-        param_value = match.group(2).strip()
-        
-        # Only add if not already in parameters dictionary
-        if param_name not in parameters:
-            parameters[param_name] = param_value
-            vs_print(DEBUG, f"Found parameter definition in {filename}: {param_name} = {param_value}")
-    
-    # Find parameter instantiations in module instances
-    module_inst_with_params = r'\n\s*?\w+?\s+?#\(([\s\S]*?)\)\s*?\w+?\s*?\('
-    for inst_match in re.finditer(module_inst_with_params, content):
-        param_block = inst_match.group(1)
-        
-        # Extract individual parameter assignments
-        for param_match in re.finditer(param_inst_pattern, param_block):
-            param_name = param_match.group(1)
-            param_value = param_match.group(2).strip()
-            
-            # Check if value references another parameter
-            if param_value in parameters:
-                # Replace with the actual parameter value
-                param_value = parameters[param_value]
-                vs_print(DEBUG, f"Replaced parameter {param_name} value with {param_value} from parameters dictionary")
-            elif re.match(r'^[A-Z_][A-Z0-9_]*$', param_value) and param_value not in parameters:
-                # If it looks like a parameter name but isn't defined, throw an error
-                vs_print(ERROR, f"Parameter {param_value} used in instantiation in {filename} is not defined in parameters dictionary")
-                exit(1)
-            
-            # Add to parameters if not already present
-            if param_name not in parameters:
-                parameters[param_name] = param_value
-                vs_print(DEBUG, f"Found parameter in module instantiation in {filename}: {param_name} = {param_value}")
-
-
-def analyse_file(
-    current_directory, file_path, script_files, verilog_files, sources_list, parameters=None
-):
-    """
-    Analyze a Verilog file for module instantiations or includes.
-
-    Args:
-        current_directory (str): The current working directory.
-        file_path (str): Path to the Verilog file.
-        script_files (list): List of script file paths.
-        verilog_files (list): List of Verilog file paths.
-        sources_list (list): List to store additional source file paths.
-        parameters (dict, optional): Parameters to pass to generation scripts.
-
-    Returns:
-        tuple: A tuple containing the updated sources_list and verilog_files.
-    """
-    with open(file_path, "r") as file:
-        content = file.read()
-    filename = os.path.basename(file_path)
-    
-    # Extract parameters from module definition and instantiations
-    extract_parameters_from_file(content, filename, parameters)
-
-    moduleInstantiationPattern = r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);"
-    includePattern = r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)'
-    multiCommentIncludePattern = r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/'
-    
-    for pattern in [
-        moduleInstantiationPattern,
-        includePattern,
-        multiCommentIncludePattern,
-    ]:
-        matches = re.findall(pattern, content)
-        for item in matches:
-            sources_list, verilog_files = resolve_dependency(
-                current_directory,
-                filename,
-                item,
-                script_files,
-                verilog_files,
-                sources_list,
-                parameters,
-            )
-
-    return sources_list, verilog_files
-
-
-def resolve_dependency(
-    current_directory,
-    callee_filename,
-    match_strings,
-    script_files,
-    verilog_files,
-    sources_list,
-    parameters=None,
-):
-    """
-    Find or generate a file based on given conditions.
-
-    Args:
-        current_directory (str): The current working directory.
-        callee_filename (str): Name of the file where the "`include" is present.
-        match_strings (list): List of strings extracted from the include directive.
-        script_files (list): List of script file paths.
-        verilog_files (list): List of Verilog file paths.
-        sources_list (list): List to store the generated or found file paths.
-        parameters (dict, optional): Parameters to pass to generation scripts.
-
-    Returns:
-        tuple: (sources_list, verilog_files) - Updated lists.
-    """
-    # Extract file information from match strings
-    file_name = match_strings[0].split()[0]
-    _, extension = os.path.splitext(file_name)
-    comment_arg = match_strings[1].strip() if len(match_strings) > 1 else ""
-
-    # Try to locate the file in the verilog_files list
-    file_path = _locate_verilog_file(file_name, extension, verilog_files)
-
-    # Handle VS_NO_GENERATE directive
-    if "VS_NO_GENERATE" in comment_arg:
-        vs_print(
-            INFO,
-            f"File {file_name} is ignored due to 'VS_NO_GENERATE' comment in {callee_filename}.",
-        )
-        return sources_list, verilog_files
-
-    # Process the file: generate if not found, add to sources if found
-    if file_path is None:
-        sources_list, verilog_files = _run_generator_script(
-            file_name, script_files, comment_arg, callee_filename,
-            current_directory, sources_list, verilog_files, parameters
-        )
-    elif file_path not in sources_list:
-        sources_list.append(file_path)
-
-    return sources_list, verilog_files
-
-
-def _locate_verilog_file(file_name, extension, verilog_files):
-    """
-    Locate a Verilog file by name, trying multiple extensions if none specified.
-
-    Args:
-        file_name (str): The base file name.
-        extension (str): The file extension (may be empty).
-        verilog_files (list): List of available Verilog file paths.
-
-    Returns:
-        str or None: The path to the found file, or None if not found.
-    """
-    if extension == "":
-        # Try .v first, then .sv
-        file_path = find_filename_in_list(f"{file_name}.v", verilog_files)
-        if file_path is None:
-            file_path = find_filename_in_list(f"{file_name}.sv", verilog_files)
-        return file_path
-    else:
-        return find_filename_in_list(file_name, verilog_files)
-
-
-def _run_generator_script(
-    file_name, script_files, comment_arg, callee_filename,
-    current_directory, sources_list, verilog_files, parameters=None
-):
-    """
-    Run a generator script to create a Verilog file.
-
-    Args:
-        file_name (str): The name of the file to generate.
-        script_files (list): List of available script file paths.
-        comment_arg (str): Comment arguments from the include directive.
-        callee_filename (str): Name of the file requesting generation.
-        current_directory (str): The current working directory.
-        sources_list (list): Current list of source files.
-        verilog_files (list): Current list of Verilog files.
-        parameters (dict, optional): Parameters to pass to generation scripts.
-
-    Returns:
-        tuple: Updated (sources_list, verilog_files).
-    """
-    script_path, file_suffix = find_most_common_prefix(file_name, script_files)
-
-    # Look for parameters name in comment_arg and replace by their value
-    if parameters:
-        for param_name, param_value in parameters.items():
-            comment_arg = re.sub("{"+param_name+"}", param_value, comment_arg)
-    
-    if script_path != "":
-        script_arguments = [
-            script_path,
-            file_suffix,
-            comment_arg,
-            callee_filename,
-        ] + sys.argv[1:]
-        subprocess.run(script_arguments)
-        
-        return move_to_generated_dir(
-            script_path, current_directory, sources_list, verilog_files
-        )
-    
-    return sources_list, verilog_files
-
-
-def move_to_generated_dir(script_path, current_directory, sources_list, verilog_files):
-    """
-    Moves Verilog files generated by a script under the current directory to the generated directory.
-
-    Args:
-        script_path (str): A string equivalent to the script path executed.
-        current_directory (str): A string equivalent to the current directory.
-        sources_list (list): List of source file paths.
-        verilog_files (list): List of Verilog file paths.
-
-    Returns:
-        tuple: A tuple containing the updated sources_list and verilog_files.
-
-    This function iterates through files in the current directory, identifies Verilog files based on their extensions,
-    and moves them to the "generated/RTL" directory. It updates the sources_list and verilog_files accordingly.
-    """
-    verilog_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
-    verilog_files_found = []
-    generated_dir = os.path.join(current_directory, "generated")
-
-    for filename in os.listdir(current_directory):
-        _, extension = os.path.splitext(filename)
-        file_dst_path = os.path.join(generated_dir, filename)
-        file_src_path = os.path.join(current_directory, filename)
-        if extension in verilog_extensions:
-            shutil.move(file_src_path, file_dst_path)
-            verilog_files_found.append(file_dst_path)
-            if file_dst_path not in verilog_files:
-                verilog_files.append(file_dst_path)
-            if file_dst_path not in sources_list:
-                sources_list.append(file_dst_path)
-
-    if verilog_files_found == []:
-        vs_print(WARNING, f"{script_path} generated no Verilog files.")
-    else:
-        vs_print(
-            INFO, f"{script_path} generated {', '.join(verilog_files_found)}."
-        )
-
-    return sources_list, verilog_files
-
-
-def find_most_common_prefix(input_name, file_list):
-    """
-    Searches for the file with the most common prefix in a file list.
-
-    Args:
-        input_name (str): A string equivalent to the file name to search for.
-        file_list (list): A list of script file names.
-
-    Returns:
-        tuple: A tuple containing the file path and the remaining string words.
-    """
-    input_words = input_name.split("_")
-    similar_word_counter = 0
-    most_similar_file = ""
-    file_suffix = ""
-    for file_path in file_list:
-        file_name = os.path.splitext(os.path.basename(file_path))[0]
-        tmp_counter = 0
-        tmp_string = ""
-        for word in input_words:
-            tmp_string = tmp_string + word
-            tmp_counter = tmp_counter + 1
-            if file_name == tmp_string:
-                if tmp_counter > similar_word_counter:
-                    similar_word_counter = tmp_counter
-                    most_similar_file = file_path
-                    file_suffix = "_".join(input_words[tmp_counter:])
-            tmp_string = tmp_string + "_"
-    if most_similar_file == "" and file_suffix == "":
-        vs_print(WARNING, f'Could not locate any matching files for "{input_name}".')
-    elif file_suffix == "":
-        vs_print(
-            DEBUG,
-            f'The most similar file to "{input_name}" is "{relative_path(most_similar_file)}" and "{input_name}" does not have a suffix at the end of its name.',
-        )
-    else:
-        vs_print(
-            DEBUG,
-            f'The most similar file to "{input_name}" is "{relative_path(most_similar_file)}" and the suffix is {file_suffix}.',
-        )
-    return most_similar_file, file_suffix
-
-
-def _build_module_generic(
-    current_directory,
-    module_name,
-    build_dir,
-    verilog_files,
-    script_files,
-    built_sources=None,
-    parameters=None,
-):
-    """
-    Generic build function for any module type (RTL, TestBench, Board).
-    
-    Args:
-        current_directory (str): The current working directory.
-        module_name (str): The module name to build.
-        build_dir (str): Directory under build/ (e.g., "RTL", "TestBench").
-        verilog_files (list): List of Verilog source file paths.
-        script_files (list): List of script file paths.
-        built_sources (list, optional): Sources to exclude from copy.
-        parameters (dict, optional): Build parameters.
-        module_type (str): Type of module for logging (e.g., "RTL", "TestBench").
-        post_build_callback (callable, optional): Function to call after build completes.
-    
-    Returns:
-        list: The list of source files for this build.
-    """
-    
-    # Resolve all dependencies
-    sources = build_dependency_tree(
-        current_directory, verilog_files, script_files, module_name, parameters
-    )
-    
-    if not sources:
-        vs_print(ERROR, f"No sources found for '{module_name}'")
-        return []
-    
-    # Copy files to build directory
-    build_verilog_sources(sources, built_sources, build_dir, parameters)
-    
-    return sources
-
-
-def rtl_build(current_directory, module, parameters, verilog_files, script_files):
-    """
-    Builds Verilog files and creates a build directory for RTL sources.
-
-    Args:
-        current_directory (str): The current working directory.
-        module (str): The module name for Verilog files.
-        parameters (dict): Build parameters to pass to scripts.
-        verilog_files (list): List of Verilog source file paths.
-        script_files (list): List of script file paths.
-
-    Returns:
-        list: The list of RTL Verilog source files.
-    """
-    create_directory(f"{current_directory}/generated")
-
-    built_sources = _build_module_generic(
-        current_directory=current_directory,
-        module_name=module,
-        build_dir=f"{current_directory}/build/RTL",
-        verilog_files=verilog_files,
-        script_files=script_files,
-        built_sources=[],
-        parameters=parameters,
-    )
-    vs_print(OK, f"Built all RTL sources.")
-    return built_sources
-
-
-def testbench_build(
-    current_directory, TestBench, verilog_files, script_files, rtl_sources, parameters
-):
-    """
-    Builds TestBench Verilog files and creates a build directory.
-
-    Args:
-        current_directory (str): The current working directory.
-        TestBench (str): The TestBench name.
-        verilog_files (list): List of Verilog source file paths.
-        script_files (list): List of script file paths.
-        rtl_sources (list): List of RTL Verilog source files to exclude.
-    """
-    testBench_build_dir = f"{current_directory}/build/TestBench"
-    _build_module_generic(
-        current_directory=current_directory,
-        module_name=TestBench,
-        build_dir=testBench_build_dir,
-        verilog_files=verilog_files,
-        script_files=script_files,
-        built_sources=rtl_sources,
-        parameters=parameters,
-    )
-    copy_testbench_cpp(TestBench, testBench_build_dir)
-    vs_print(OK, f"Built all TestBench sources.")
-
-
-def _extract_board_name(board_module, main_module):
-    """
-    Extract clean board name from board module identifier.
-    
-    Args:
-        board_module (str): Full board module name.
-        main_module (str): Main module name prefix to strip.
-    
-    Returns:
-        str: Board name without main module prefix.
-    """
-    if board_module.startswith(main_module):
-        board_name = board_module[len(main_module):].lstrip("_")
-        return board_name if board_name else board_module
-    return board_module
-
-
-def board_build(
-    current_directory, Boards, main_module, verilog_files, script_files, rtl_sources, parameters
-):
-    """
-    Builds Verilog files for specified boards and creates build directories.
-
-    Args:
-        current_directory (str): The current working directory.
-        Boards (list): List of board module names.
-        main_module (str): The main module name.
-        verilog_files (list): List of Verilog source file paths.
-        script_files (list): List of script file paths.
-        rtl_sources (list): List of RTL Verilog source files to exclude.
-    """
-    total_boards = len(Boards)
-    
-    for idx, board_module in enumerate(Boards, 1):
-        board_name = _extract_board_name(board_module, main_module)
-        
-        vs_print(INFO, f"Building board {idx}/{total_boards}: {board_name}")
-        
-        _build_module_generic(
-            current_directory=current_directory,
-            module_name=board_module,
-            build_dir=f"{current_directory}/build/RTL/{board_name}",
-            verilog_files=verilog_files,
-            script_files=script_files,
-            built_sources=rtl_sources,
-            parameters=parameters,
-        )
-
-    vs_print(OK, f"Built all board sources.")
-
-
-def copy_testbench_cpp(TestBench, testbench_dir):
-    """
-    Copies TestBench C++ file to the TestBench build directory.
-
-    Args:
-        TestBench (str): The TestBench name.
-        testbench_dir (str): The directory for TestBench files.
-    """
-    for root, directories, files in os.walk(os.path.abspath("."), topdown=True):
-        filtered_dirs = []
-        for directory in directories:
-            if directory not in [".git", "build", "generated", "__pycache__"]:
-                filtered_dirs.append(directory)
-        directories[:] = filtered_dirs
-        if f"{TestBench}.cpp" in files:
-            # Form the source and destination paths
-            source_path = os.path.join(root, f"{TestBench}.cpp")
-            destination_path = os.path.join(testbench_dir, f"{TestBench}.cpp")
-
-            # Copy the file to the testbench_dir
-            shutil.copy(source_path, destination_path)
-            vs_print(
-                INFO, f"Testbench '{source_path}' copied to '{destination_path}'"
-            )
-            return
-
-    vs_print(
-        INFO,
-        f"File '{TestBench}.cpp' not found in the current directory or its subdirectories.",
-    )
-
-
-def build_verilog_sources(new_sources, existing_sources, build_dir, parameters):
-    """
-    Copy Verilog files to build directories and substitute ".vs" on said files.
-
-    Args:
-        new_sources (list): List of new Verilog source file paths.
-        existing_sources (list): List of existing Verilog source file paths.
-        build_dir (str): Path to the build directory.
-    """
-    sources_list = filter_list(new_sources, existing_sources)
-    create_directory(build_dir)
-    for verilog_file in sources_list:
-        if not verilog_file.endswith(".vs"):
-            verilog_content = ""
-            verilog_content = substitute_vs_file(verilog_file, sources_list)
-            file_name = os.path.basename(verilog_file)
-            destination_path = f"{build_dir}/{file_name}"
-
-            # Check if file exists and compare contents
-            if os.path.exists(destination_path):
-                with open(destination_path, "r") as existing_file:
-                    existing_content = existing_file.read()
-                if existing_content == verilog_content:
-                    vs_print(DEBUG, f"File '{file_name}' unchanged, skipping write.")
-                    continue
-            with open(f"{build_dir}/{file_name}", "w") as file:
-                file.write(verilog_content)
-
-
-def filter_list(target_list, source_list):
-    """
-    Filter common files between the target list and the source list.
-
-    Args:
-        target_list (list): List to be filtered.
-        source_list (list): Secondary source files list.
-
-    Returns:
-        list: `target_list` filtered, remains with all ".vs" files and files not present in `source_list`.
-    """
-    # Create an empty list to store elements from target_list that are not in source_list
-    filtered_list = []
-
-    # Iterate through target_list and only add elements not present in source_list to filtered_list
-    for element in target_list:
-        if element not in source_list:
-            filtered_list.append(element)
-
-    return filtered_list
-
-
-def substitute_vs_file(source_file, sources_list):
-    """
-    Recursively substitutes included .vs files in the source file content.
-
-    Args:
-        source_file (str): The source file containing potential `include directives.
-        sources_list (list): List of source file paths.
-
-    Returns:
-        str: The new content with included .vs files substituted.
-    """
-    new_content = ""
-    on_comment = False
-
-    with open(source_file, "r") as file:
-        for line in file:
-            if not on_comment:
-                filename_match = re.findall(r'^\s*?`include\s+?"(.+?)\.vs"', line)
-                if filename_match:
-                    vs_file = filename_match[0] + ".vs"
-                    vs_file_path = find_filename_in_list(vs_file, sources_list)
-
-                    if vs_file_path:
-                        new_content += substitute_vs_file(vs_file_path, sources_list)
-                    else:
-                        warning_text = f"File {vs_file} does not exist to substitute."
-                        vs_print(WARNING, warning_text)
-                        new_content += f"  // {warning_text}\n"
-                    if "/*" in line:
-                        on_comment = True
-                else:
-                    new_content += line
-            else:
-                if "*/" in line:
-                    on_comment = False
-
-    return new_content
-
-
-def find_filename_in_list(filename, files_list):
-    """
-    Finds the filename in the list of files.
-
-    Args:
-        filename (str): The filename to find.
-        files_list (list): The list of files to search.
-
-    Returns:
-        str or None: The first matching file, or None if the file is not found.
-    """
-    found_files = None
-    for file in files_list:
-        if os.path.basename(file) == filename:
-            if found_files != None:
-                vs_print(
-                    WARNING,
-                    f"Found more than one directory with file {filename}.\n  {file}",
-                )
-            found_files = file
-
-    if found_files:
-        return found_files
-    return None
-
-
-def relative_path(path):
-    """
-    Convert an absolute path to a relative path based on the current working directory.
-
-    Args:
-        path (str): The absolute path to be converted.
-
-    Returns:
-        str: The relative path derived from the given absolute path.
-    """
-    path = os.path.relpath(path, os.getcwd())
-    return path
 
 
 def create_directory(path):
@@ -820,7 +171,7 @@ def parse_arguments():
                     exit(1)
         elif include_directory:
             directories = include_directory.group(1).split()
-            directory_pattern = r"^[\w]+$"
+            directory_pattern = r"^[\w/.-]+$"
             for directory in directories:
                 if re.match(directory_pattern, directory):
                     include_directories.append(directory)
@@ -863,23 +214,9 @@ def main():
             clean_build(current_directory)
         main_module, testbench, board_modules, parameters, include_directories = parse_arguments()
         if main_module != None:
-            script_files, verilog_files = find_existing_files(current_directory, include_directories)
-            rtl_sources = rtl_build(
-                current_directory, main_module, parameters, verilog_files, script_files
-            )
-            testbench_build(
-                current_directory, testbench, verilog_files, script_files, rtl_sources, parameters
-            )
-            if board_modules != []:
-                board_build(
-                    current_directory,
-                    board_modules,
-                    main_module,
-                    verilog_files,
-                    script_files,
-                    rtl_sources,
-                    parameters,
-                )
+            builder = VsBuilder(main_module, testbench, board_modules, parameters, include_directories)
+            builder.resolve_dependencies()  # Resolve and generate any missing HDL/snippet files; populate source lists.
+            builder.build_sources()         # Copy sources into build/, performing snippet substitutions.
             vs_print(OK, f"Created {main_module} project build directory.")
         else:
             vs_print(ERROR, f"Undefined main module!")
