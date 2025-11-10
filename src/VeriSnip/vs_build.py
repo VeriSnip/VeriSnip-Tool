@@ -29,14 +29,47 @@ class VsBuilder:
         self.testbench_sources = []
         self.board_sources = {}
 
+
     def _find_all_files(self):
-        # TODO: call/implement your existing find_existing_files logic,
-        # populating self.verilog_files and self.script_files.
         vs_print(INFO, "Discovering HDL, snippet and script files...")
-        # Example placeholders:
-        # self.verilog_files = find_verilog_files(self.cwd, self.include_directories)
-        # self.script_files  = find_script_files(self.cwd, self.include_directories)
-        pass
+        excluded_files = {"LICENSE", ".gitignore", ".gitmodules", "Makefile", ".git"}
+        verilog_extensions = {".v", ".vh", ".sv", ".svh"}
+        script_extensions = {".py", ".sh", ".lua", ".scala", ".rb", ".pl", ".tcl", ""}
+
+        script_files = []
+        snippet_files = []
+        verilog_files = []
+
+        for search_dir in [self.cwd] + self.include_directories:
+            for root, dirnames, filenames in os.walk(search_dir, topdown=True):
+                # Prune irrelevant directories
+                dirnames[:] = [d for d in dirnames if d not in {".git", "build", "generated", "__pycache__"}]
+                for fname in filenames:
+                    name, ext = os.path.splitext(fname)
+                    if name in excluded_files:
+                        continue
+                    fpath = os.path.join(root, fname)
+                    if ext in script_extensions:
+                        script_files.append(fpath)
+                    if ext in verilog_extensions:
+                        verilog_files.append(fpath)
+                    if ext == ".vs":
+                        snippet_files.append(fpath)
+
+        # Deduplicate and sort for stable output
+        self.script_files = sorted(set(script_files))
+        self.verilog_files = sorted(set(verilog_files))
+        self.snippet_files = sorted(set(snippet_files))
+
+        vs_print(DEBUG, f"Found ({len(self.verilog_files)}) verilog files:")
+        for file_path in self.verilog_files:
+            vs_print(DEBUG, f"\t{relative_path(file_path)}")
+        vs_print(DEBUG, f"Found ({len(self.snippet_files)}) snippet files:")
+        for file_path in self.snippet_files:
+            vs_print(DEBUG, f"\t{relative_path(file_path)}")
+        vs_print(DEBUG, f"Found ({len(self.script_files)}) script files:")
+        for file_path in self.script_files:
+            vs_print(DEBUG, f"\t{relative_path(file_path)}")
 
     def resolve_dependencies(self):
         """
@@ -102,6 +135,9 @@ def remove_directory(directory_to_remove):
     Args:
         directory_to_remove (str): The directory to remove.
     """
+    if not os.path.isdir(directory_to_remove):
+        vs_print(DEBUG, f"Directory '{directory_to_remove}' does not exist; nothing to remove.")
+        return
     try:
         shutil.rmtree(directory_to_remove)
         vs_print(
@@ -119,10 +155,24 @@ def create_directory(path):
         path (str): The path of the directory to be created.
     """
     try:
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
         vs_print(INFO, f"Created directory '{path}'.")
     except OSError as e:
-        vs_print(DEBUG, f"Did not create directory: {e}")
+        vs_print(WARNING, f"Did not create directory: {e}")
+
+
+def relative_path(path):
+    """
+    Convert an absolute path to a relative path based on the current working directory.
+
+    Args:
+        path (str): The absolute path to be converted.
+
+    Returns:
+        str: The relative path derived from the given absolute path.
+    """
+    path = os.path.relpath(path, os.getcwd())
+    return path
 
 
 def parse_arguments():
@@ -148,12 +198,9 @@ def parse_arguments():
         include_directory = re.match(r'^--inc_dir="?(.+?)"?$', sys.argv[i])
         if testbench:
             testbench_name = testbench.group(1)
-            testbench_name_pattern = r"^\s+$"
-            if re.match(testbench_name_pattern, testbench_name):
-                if testbench_name.startswith("_"):
-                    testbench_name = f"{module_name}{testbench_name}"
-            else:
-                vs_print(ERROR, "Invalid argument after --TestBench=")
+            # Reject empty/whitespace-only values and optionally prefix later if it starts with "_"
+            if re.match(r"^\s*$", testbench_name):
+                vs_print(ERROR, "Empty value after --TestBench=")
                 help_build()
                 exit(1)
         elif boards:
@@ -161,10 +208,7 @@ def parse_arguments():
             Board_pattern = r"^[\w]+$"
             for Board in Boards:
                 if re.match(Board_pattern, Board):
-                    if Board.startswith("_"):
-                        board_modules.append(f"{module_name}{Board}")
-                    else:
-                        board_modules.append(Board)
+                    board_modules.append(Board)  # Prefix will be applied after parsing if needed
                 else:
                     vs_print(ERROR, f"Invalid Board name {Board}")
                     help_build()
@@ -196,6 +240,15 @@ def parse_arguments():
         elif not sys.argv[i].startswith("--"):
             module_name = sys.argv[i]
             testbench_name = f"{sys.argv[i]}_tb"
+    
+    # Post-processing: apply "_" prefix expansion now that module_name is known
+    if testbench_name and testbench_name.startswith("_") and module_name:
+        testbench_name = f"{module_name}{testbench_name}"
+    if module_name:
+        board_modules = [
+            (f"{module_name}{b}" if b.startswith("_") else b)
+            for b in board_modules
+        ]
           
     return module_name, testbench_name, board_modules, parameters, include_directories
 
