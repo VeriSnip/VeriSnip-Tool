@@ -10,6 +10,86 @@ import sys
 from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, vs_print
 
 class VsBuilder:
+    _RE_MOD_INST = re.compile(r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);")
+    _RE_INC = re.compile(r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)')
+    _RE_INC_BLOCK = re.compile(r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/')
+    _RE_PARAM_DEF = re.compile(r'^\s*parameter\s+(?:\w+\s+)?(\w+)\s*=\s*([^,;\n)]+)', re.MULTILINE)
+    _RE_PARAM_PAIR = re.compile(r'\.(\w+)\s*\(\s*([^)]+?)\s*\)')
+    _RE_PARAM_BLOCK_IN_INST = re.compile(r'\n\s*?\w+?\s+?#\(([\s\S]*?)\)\s*?\w+?\s*?\(')
+
+    class VsSource:
+        def __init__(self, name):
+            self.name = name
+            self.directory = ""
+            self.comment = ""
+
+        def locate_src(self, src_list):
+            for src in src_list:
+                file_name = os.path.basename(src)
+                # TO DO: revise this if
+                if self.name == file_name or self.name+".v" == file_name or self.name+".sv" == file_name:
+                    if self.directory != "":
+                        vs_print(
+                            WARNING,
+                            f"Found more than one directory with src {self.name}.\n  {src}",
+                        )
+                    self.directory = src
+
+        # TO DO: revise function
+        def generate(self, parameters, script_files):
+            script_directory, file_suffix = self._find_script(script_files)
+            comment_arg = self.comment
+            # Look for parameters name in comment_arg and replace by their value
+            if parameters and self.comment:
+# TO DO: Run subprocess with different comment_arg curresponding to the different parameter pairs.
+#        If there is any parameters to replace, each generated file should be copied to the generated directry
+#        and renamed to f"{self.name}_{i}". We should generate a vs file with f"{self.name}".
+#        In this file we would write `generate begin if(<verify parameter pairs>) `include "{self.name}_{i}"
+#        else $display("Unsuported parameters").
+                for name, value in parameters.items():
+                    comment_arg = re.sub("{"+name+"}", value[0], comment_arg)
+
+            if script_directory:
+                script_arguments = [
+                    script_directory,
+                    file_suffix,
+                    comment_arg,
+                ] + sys.argv[1:]
+                subprocess.run(script_arguments)
+                
+            generated_files = move_generated_files()
+            for file in generated_files:
+                basename = os.path.basename(file)
+                if basename == self.name or basename == self.name+".v" or basename == self.name+"sv":
+                    self.directory = file
+            if generated_files == []:
+                vs_print(WARNING, f"{self.name} generated no Verilog or VeriSnip files.")
+
+            return generated_files
+
+        # TO DO: revise function
+        def _find_script(self, script_files):
+            input_words = self.name.split("_")
+            similar_word_counter = 0
+            most_similar_file = ""
+            file_suffix = ""
+            for file_path in script_files:
+                file_name = os.path.splitext(os.path.basename(file_path))[0]
+                tmp_counter = 0
+                tmp_string = ""
+                for word in input_words:
+                    tmp_string = tmp_string + word
+                    tmp_counter = tmp_counter + 1
+                    if file_name == tmp_string:
+                        if tmp_counter > similar_word_counter:
+                            similar_word_counter = tmp_counter
+                            most_similar_file = file_path
+                            file_suffix = "_".join(input_words[tmp_counter:])
+                    tmp_string = tmp_string + "_"
+            if most_similar_file == "":
+                vs_print(WARNING, f'Could not locate any matching script to generate "{self.name}".')
+            return most_similar_file, file_suffix
+
     def __init__(self, main_module, testbench, board_modules, parameters, include_directories):
         self.cwd = os.getcwd()
         self.main_module = main_module
@@ -28,7 +108,6 @@ class VsBuilder:
         self.rtl_sources = []
         self.testbench_sources = []
         self.board_sources = {}
-
 
     def _find_all_files(self):
         vs_print(INFO, "Discovering HDL, snippet and script files...")
@@ -71,31 +150,172 @@ class VsBuilder:
         for file_path in self.script_files:
             vs_print(DEBUG, f"\t{relative_path(file_path)}")
 
-    def resolve_dependencies(self):
+    def resolve_sources(self):
         """
-        Resolve dependencies for main_module, testbench and boards.
-        Should populate self.rtl_sources, self.testbench_sources and self.board_sources.
+        Build source trees for RTL, TestBench and Boards.
+        - Generates missing HDL via scripts into generated/
+        - Populates: self.rtl_sources, self.testbench_sources, self.board_sources
         """
-        vs_print(INFO, f"Resolving dependencies for {self.main_module}...")
-        # Example:
-        # self.rtl_sources = build_dependency_tree(self.cwd, self.verilog_files, self.script_files, self.main_module, self.parameters)
-        # if self.testbench: ...
-        pass
+        vs_print(INFO, f"Resolving sources for {self.main_module}...")
+        generated_dir = os.path.join(self.cwd, "generated")
+        create_directory(generated_dir)
+
+        # Build RTL
+        self.rtl_sources = self._resolve_sources_tree(self.main_module)
+
+        # Build TestBench (excluding RTL duplicates)
+        if self.testbench:
+            tb = self._resolve_sources_tree(self.testbench)
+            self.testbench_sources = [f for f in tb if f not in self.rtl_sources]
+
+        # Build Boards (each excluding RTL duplicates)
+        self.board_sources = {}
+        for board in self.board_modules:
+            srcs = self._resolve_sources_tree(board)
+            self.board_sources[board] = [f for f in srcs if f not in self.rtl_sources]
+
+        # Debug print to verify resolved sources
+        vs_print(DEBUG, f"RTL sources ({len(self.rtl_sources)}):")
+        for src in self.rtl_sources:
+            vs_print(DEBUG, f"\t{relative_path(src)}")
+
+        if self.testbench:
+            vs_print(DEBUG, f"TestBench sources ({len(self.testbench_sources)}):")
+            for src in self.testbench_sources:
+                vs_print(DEBUG, f"\t{relative_path(src)}")
+
+        for board in self.board_modules:
+            vs_print(DEBUG, f"Board '{board}' sources ({len(self.board_sources[board])}):")
+            for src in self.board_sources[board]:
+                vs_print(DEBUG, f"\t{relative_path(src)}")
+
+    # ---------- source resolution helpers ----------
+
+    # TO DO: revise passing only directories
+    def _resolve_sources_tree(self, top_module):
+        """
+        Resolve all transitive sources for a given top module.
+        """
+        sources = [self.VsSource(top_module)]
+        i = 0
+        while i < len(sources):
+            self._resolve_source(sources[i])
+            sources += self._analyse_file(sources[i])
+            i+=1
+        
+        source_directories = []
+        for source in sources:
+            source_directories.append(source.directory)
+
+        return sorted(set(source_directories))
+    
+    def _resolve_source(self, source_file):
+        file_list = self.snippet_files + self.verilog_files
+        source_file.locate_src(file_list)
+        if source_file.directory is "":
+            generated_files = source_file.generate(self.parameters, self.script_files)
+            for file in generated_files:
+                if file.endswith(".vs"):
+                    self.snippet_files.append(file)
+                else:
+                    self.verilog_files.append(file)
+        return
+
+    # TO DO: revise function and use re.compile defined above
+    def _analyse_file(self, source_file):
+        if not source_file.directory:
+            vs_print(ERROR, f"{source_file.name} does not exist to analyse!")
+            exit(1)
+        with open(source_file.directory, "r") as f:
+            content = f.read()
+
+        filename = os.path.basename(source_file.directory)
+        # TO DO: look for aditional parameter definitions
+        param_def_pattern = r'^\s*parameter\s+(?:\w+\s+)?(\w+)\s*=\s*(.[^\s,\n)]+)'
+        for match in re.finditer(param_def_pattern, content, re.MULTILINE):
+            name = match.group(1)
+            value = match.group(2).strip()
+            if name in self.parameters:
+                if value not in self.parameters[name]:
+                    self.parameters[name].append(value)
+            else:
+                self.parameters[name] = [value]
+        
+        # Find parameter instantiations in module instances
+        param_inst_pattern = r'\.(\w+)\s*\(\s*([^)]+?)\s*\)'
+        module_inst_with_params = r'\n\s*?\w+?\s+?#\(([\s\S]*?)\)\s*?\w+?\s*?\('
+        for inst_match in re.finditer(module_inst_with_params, content):
+            param_block = inst_match.group(1)
+            # Extract individual parameter assignments
+            for param_match in re.finditer(param_inst_pattern, param_block):
+                name = param_match.group(1)
+                value = param_match.group(2).strip()
+                # Check if value references another parameter
+                if value in self.parameters:
+                    # Replace with the actual parameter value
+                    if name in self.parameters:
+                        if value not in self.parameters[name]:
+                            self.parameters[name] = list(set(self.parameters[value]+self.parameters[name]))
+                    else:
+                        self.parameters[name] = self.parameters[value]
+                elif re.match(r'^[A-Z_][A-Z0-9_]*$', value) and value not in self.parameters:
+                    # If it looks like a parameter name but isn't defined, throw an error
+                    vs_print(ERROR, f"Parameter {value} used in instantiation in {filename} is not defined in parameters dictionary")
+                    exit(1)
+                    # Add to parameters if not already present
+                    if name in self.parameters:
+                        if value not in self.parameters[name]:
+                            self.parameters[name].append(value)
+                    else:
+                        self.parameters[name] = [value]
+
+
+        # TO DO: look for VeriSnip depedencies
+        file_dependencies = []
+        non_generated_file_dependencies = []
+        includePattern = r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)'
+        multiCommentIncludePattern = r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/'
+        
+        for pattern in [
+            includePattern,
+            multiCommentIncludePattern,
+        ]:
+            matches = re.finditer(pattern, content)
+            for item in matches:
+                new_file = self.VsSource(item.group(1))
+                comment_arg = item.group(2).strip()
+                if "VS_NO_GENERATE" in comment_arg:
+                    non_generated_file_dependencies.append(new_file)
+                else:
+                    new_file.comment = comment_arg
+                    file_dependencies.append(new_file)
+
+        # TO DO: look for instantiated Verilog files and passed parameters
+        # TO DO: verify regex expression
+        moduleInstantiationPattern = r"\n\s*(\w+)\s+(?:#\([.\w\s\n,()]*?\))?\s*\w+?\s*?[(]+[.\w\s\n,()]+?[)]+;"
+        matches = re.finditer(moduleInstantiationPattern, content)
+        for item in matches:
+            new_file = self.VsSource(item.group(1))
+            file_dependencies.append(new_file)
+
+        return file_dependencies + non_generated_file_dependencies
+    
+    # -----------------------------------------------
 
     def build_sources(self):
         """
         Create build directories, copy files and substitute snippets.
         Reuse existing helper functions where possible.
         """
-        vs_print(INFO, "Building sources into build/ and generated/ ...")
-        # create_directory(f"{self.cwd}/build")
+        vs_print(INFO, "Building sources into build/ ...")
+        create_directory(f"{self.cwd}/build")
         # build_verilog_sources(self.rtl_sources, ..., build_dir=...)
         pass
 
 
 def help_build():
     text = """
-VeriSnip (VS) version 0.0.3
+VeriSnip (VS) version 0.0.4
 To show this help page: 
     Usage: vs_build --help
 
@@ -156,7 +376,6 @@ def create_directory(path):
     """
     try:
         os.makedirs(path, exist_ok=True)
-        vs_print(INFO, f"Created directory '{path}'.")
     except OSError as e:
         vs_print(WARNING, f"Did not create directory: {e}")
 
@@ -173,6 +392,23 @@ def relative_path(path):
     """
     path = os.path.relpath(path, os.getcwd())
     return path
+
+
+def move_generated_files():
+    supported_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
+    new_files = []
+    cwd = os.getcwd()
+    generated_dir = os.path.join(cwd, "generated")
+
+    for filename in os.listdir(cwd):
+        _, extension = os.path.splitext(filename)
+        file_dst_path = os.path.join(generated_dir, filename)
+        file_src_path = os.path.join(cwd, filename)
+        if extension in supported_extensions:
+            shutil.move(file_src_path, file_dst_path)
+            new_files.append(file_dst_path)
+
+    return new_files
 
 
 def parse_arguments():
@@ -232,7 +468,10 @@ def parse_arguments():
             integer_pattern = r"^\d+$"
             
             if re.match(verilog_pattern, value) or re.match(integer_pattern, value):
-                parameters[name] = value
+                if name in parameters:
+                    parameters[name].append(value)
+                else:
+                    parameters[name] = [value]
                 vs_print(DEBUG, f"Parsed parameter {name} = {value}")
             else:
                 vs_print(WARNING, f"Invalid parameter value format: {sys.argv[i]}")
@@ -268,8 +507,8 @@ def main():
         main_module, testbench, board_modules, parameters, include_directories = parse_arguments()
         if main_module != None:
             builder = VsBuilder(main_module, testbench, board_modules, parameters, include_directories)
-            builder.resolve_dependencies()  # Resolve and generate any missing HDL/snippet files; populate source lists.
-            builder.build_sources()         # Copy sources into build/, performing snippet substitutions.
+            builder.resolve_sources()  # Resolve and generate any missing HDL/snippet files; populate source lists.
+            builder.build_sources()    # Copy sources into build/, performing snippet substitutions.
             vs_print(OK, f"Created {main_module} project build directory.")
         else:
             vs_print(ERROR, f"Undefined main module!")
