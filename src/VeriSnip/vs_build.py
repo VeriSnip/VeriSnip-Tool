@@ -10,6 +10,7 @@ import sys
 from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, vs_print
 
 class VsBuilder:
+    # TO DO: use these in the code
     _RE_MOD_INST = re.compile(r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);")
     _RE_INC = re.compile(r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)')
     _RE_INC_BLOCK = re.compile(r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/')
@@ -24,16 +25,12 @@ class VsBuilder:
             self.comment = ""
 
         def locate_src(self, src_list):
-            for src in src_list:
-                file_name = os.path.basename(src)
-                # TO DO: revise this if
-                if self.name == file_name or self.name+".v" == file_name or self.name+".sv" == file_name:
-                    if self.directory != "":
-                        vs_print(
-                            WARNING,
-                            f"Found more than one directory with src {self.name}.\n  {src}",
-                        )
-                    self.directory = src
+            # TO DO: is there a better way of doing this?
+            self.directory = locate_file_in_list(self.name, src_list)
+            if self.directory == "":
+                self.directory = locate_file_in_list(self.name+".v", src_list)
+            if self.directory == "":
+                self.directory = locate_file_in_list(self.name+".sv", src_list)
 
         # TO DO: revise function
         def generate(self, parameters, script_files):
@@ -307,9 +304,13 @@ class VsBuilder:
         Create build directories, copy files and substitute snippets.
         Reuse existing helper functions where possible.
         """
-        vs_print(INFO, "Building sources into build/ ...")
-        create_directory(f"{self.cwd}/build")
-        # build_verilog_sources(self.rtl_sources, ..., build_dir=...)
+        vs_print(INFO, "Populating build/!")
+        build_dir = f"{self.cwd}/build"
+        create_directory(build_dir)
+        build_verilog_sources(self.rtl_sources, build_dir+"/RTL")
+        build_verilog_sources(self.testbench_sources, build_dir+"/TestBench")
+        for board in self.board_modules:
+            build_verilog_sources(self.board_sources[board], build_dir+"/"+board)
         pass
 
 
@@ -409,6 +410,78 @@ def move_generated_files():
             new_files.append(file_dst_path)
 
     return new_files
+
+
+def locate_file_in_list(filename, files_list):
+    found_files = ""
+    for file in files_list:
+        if os.path.basename(file) == filename:
+            if found_files != "":
+                vs_print(
+                    WARNING,
+                    f"Found more than one directory with file {filename}.\n  {file}",
+                )
+            found_files = file
+    return found_files
+
+
+def build_verilog_sources(sources, build_dir):
+    create_directory(build_dir)
+    for verilog_file in sources:
+        if not verilog_file.endswith(".vs"):
+            verilog_content = ""
+            verilog_content = substitute_vs_file(verilog_file, sources)
+            file_name = os.path.basename(verilog_file)
+            destination_path = f"{build_dir}/{file_name}"
+
+            # Check if file exists and compare contents
+            if os.path.exists(destination_path):
+                with open(destination_path, "r") as existing_file:
+                    existing_content = existing_file.read()
+                if existing_content == verilog_content:
+                    vs_print(DEBUG, f"File '{file_name}' unchanged, skipping write.")
+                    continue
+            with open(f"{build_dir}/{file_name}", "w") as file:
+                file.write(verilog_content)
+
+
+def substitute_vs_file(source_file, sources_list):
+    """
+    Recursively substitutes included .vs files in the source file content.
+
+    Args:
+        source_file (str): The source file containing potential `include directives.
+        sources_list (list): List of source file paths.
+
+    Returns:
+        str: The new content with included .vs files substituted.
+    """
+    new_content = ""
+    on_comment = False
+
+    with open(source_file, "r") as file:
+        for line in file:
+            if not on_comment:
+                filename_match = re.findall(r'^\s*?`include\s+?"(.+?)\.vs"', line)
+                if filename_match:
+                    vs_file = filename_match[0] + ".vs"
+                    vs_file_path = locate_file_in_list(vs_file, sources_list)
+
+                    if vs_file_path:
+                        new_content += substitute_vs_file(vs_file_path, sources_list)
+                    else:
+                        warning_text = f"File {vs_file} does not exist to substitute."
+                        vs_print(WARNING, warning_text)
+                        new_content += f"  // {warning_text}\n"
+                    if "/*" in line:
+                        on_comment = True
+                else:
+                    new_content += line
+            else:
+                if "*/" in line:
+                    on_comment = False
+
+    return new_content
 
 
 def parse_arguments():
