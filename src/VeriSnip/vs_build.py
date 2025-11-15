@@ -289,7 +289,7 @@ class VsBuilder:
 
         # TO DO: look for instantiated Verilog files and passed parameters
         # TO DO: verify regex expression
-        moduleInstantiationPattern = r"\n\s*(\w+)\s+(?:#\([.\w\s\n,()]*?\))?\s*\w+?\s*?[(]+[.\w\s\n,()]+?[)]+;"
+        moduleInstantiationPattern = r"\n\s*(\w+)\s+(?:#\([.\w\s,()]*?\))?\s*\w+?\s*?[(]+[.\w\s,()]+?[)]+;"
         matches = re.finditer(moduleInstantiationPattern, content)
         for item in matches:
             new_file = self.VsSource(item.group(1))
