@@ -27,10 +27,6 @@ class VsBuilder:
         def locate_src(self, src_list):
             # TO DO: is there a better way of doing this?
             self.directory = locate_file_in_list(self.name, src_list)
-            if self.directory == "":
-                self.directory = locate_file_in_list(self.name+".v", src_list)
-            if self.directory == "":
-                self.directory = locate_file_in_list(self.name+".sv", src_list)
 
         # TO DO: revise function
         def generate(self, parameters, script_files):
@@ -161,7 +157,8 @@ class VsBuilder:
         self.rtl_sources = self._resolve_sources_tree(self.main_module)
 
         # Build TestBench (excluding RTL duplicates)
-        if self.testbench:
+        # TO DO: is this hack acceptable?
+        if locate_file_in_list(self.testbench, self.verilog_files) != "":
             tb = self._resolve_sources_tree(self.testbench)
             self.testbench_sources = [f for f in tb if f not in self.rtl_sources]
 
@@ -415,7 +412,9 @@ def move_generated_files():
 def locate_file_in_list(filename, files_list):
     found_files = ""
     for file in files_list:
-        if os.path.basename(file) == filename:
+        # TO DO: is this hack acceptable
+        basename = os.path.basename(file)
+        if basename == filename or basename == filename+".v" or basename == filename+".sv":
             if found_files != "":
                 vs_print(
                     WARNING,
@@ -484,6 +483,7 @@ def substitute_vs_file(source_file, sources_list):
     return new_content
 
 
+# TO DO: use arg_parse
 def parse_arguments():
     """
     Parses arguments with which vs_build is called.
