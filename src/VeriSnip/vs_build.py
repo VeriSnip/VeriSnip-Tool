@@ -206,7 +206,7 @@ class VsBuilder:
     def _resolve_source(self, source_file):
         file_list = self.snippet_files + self.verilog_files
         source_file.locate_src(file_list)
-        if source_file.directory is "":
+        if source_file.directory == "":
             generated_files = source_file.generate(self.parameters, self.script_files)
             for file in generated_files:
                 if file.endswith(".vs"):
