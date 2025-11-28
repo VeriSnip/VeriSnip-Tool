@@ -499,8 +499,14 @@ def parse_arguments():
     board_modules = []
     parameters = {}
     include_directories = []
+    current_directory = os.getcwd()
+
+    if len(sys.argv) == 1:
+        help_build()
+        exit(0)
 
     for i in range(1, len(sys.argv)):
+        print(sys.argv[i])
         parameter = re.match(r'^(\w+)="?([^"]+)"?$', sys.argv[i])
         testbench = re.match(r'^--TestBench="?([^"]+)"?$', sys.argv[i])
         boards = re.match(r'^--Boards="?(.+?)"?$', sys.argv[i])
@@ -549,6 +555,11 @@ def parse_arguments():
             else:
                 vs_print(WARNING, f"Invalid parameter value format: {sys.argv[i]}")
             continue
+        elif sys.argv[i] == "--help":
+            help_build()
+            exit(0)
+        elif sys.argv[i] == "--clean":
+            clean_build(current_directory)
         elif not sys.argv[i].startswith("--"):
             module_name = sys.argv[i]
             testbench_name = f"{sys.argv[i]}_tb"
@@ -571,21 +582,14 @@ def main():
     It processes command-line arguments, cleans the build directory if requested,
     and builds the RTL, TestBench, and board modules as specified.
     """
-    current_directory = os.getcwd()
-    if len(sys.argv) < 2 or sys.argv[1] == "--help":
-        help_build()        
+    main_module, testbench, board_modules, parameters, include_directories = parse_arguments()
+    if main_module != None:
+        builder = VsBuilder(main_module, testbench, board_modules, parameters, include_directories)
+        builder.resolve_sources()  # Resolve and generate any missing HDL/snippet files; populate source lists.
+        builder.build_sources()    # Copy sources into build/, performing snippet substitutions.
+        vs_print(OK, f"Created {main_module} project build directory.")
     else:
-        if "--clean" in sys.argv:
-            clean_build(current_directory)
-        main_module, testbench, board_modules, parameters, include_directories = parse_arguments()
-        if main_module != None:
-            builder = VsBuilder(main_module, testbench, board_modules, parameters, include_directories)
-            builder.resolve_sources()  # Resolve and generate any missing HDL/snippet files; populate source lists.
-            builder.build_sources()    # Copy sources into build/, performing snippet substitutions.
-            vs_print(OK, f"Created {main_module} project build directory.")
-        else:
-            vs_print(ERROR, f"Undefined main module!")
-            exit(1)
+        vs_print(INFO, f"Undefined main module, skipping build.")
 
 
 # Check if this script is called directly
