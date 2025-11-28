@@ -588,7 +588,7 @@ def main():
         builder.build_sources()    # Copy sources into build/, performing snippet substitutions.
         vs_print(OK, f"Created {main_module} project build directory.")
     else:
-        vs_print(INFO, f"Undefined main module, skipping build.")
+        vs_print(DEBUG, f"Undefined main module, skipping build.")
 
 
 # Check if this script is called directly
