@@ -506,7 +506,6 @@ def parse_arguments():
         exit(0)
 
     for i in range(1, len(sys.argv)):
-        print(sys.argv[i])
         parameter = re.match(r'^(\w+)="?([^"]+)"?$', sys.argv[i])
         testbench = re.match(r'^--TestBench="?([^"]+)"?$', sys.argv[i])
         boards = re.match(r'^--Boards="?(.+?)"?$', sys.argv[i])
