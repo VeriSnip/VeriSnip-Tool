@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "VeriSnip"
 version = "0.0.4"
 authors = [
-  { name="Pedro Nuno de Melo Antunes", email="pedronmantunes@gmail.com" },
+  { name="Pedro Nuno de Melo Antunes", email="pedroa@verisnip.com" },
 ]
 description = "A framework to integrade scripting into hardware design."
 readme = "README.md"
