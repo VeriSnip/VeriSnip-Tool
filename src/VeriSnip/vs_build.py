@@ -515,11 +515,6 @@ def parse_arguments():
     board_modules = []
     parameters = {}
     include_directories = []
-    current_directory = os.getcwd()
-
-    if len(sys.argv) == 1:
-        help_build()
-        exit(0)
 
     if testbench_name and re.match(r"^\s*$", testbench_name):
         vs_print(ERROR, "Empty value after --TestBench=")
