@@ -4,8 +4,8 @@ authors:
 - family-names: "de Melo Antunes"
   given-names: "Pedro Nuno"
   orcid: "https://orcid.org/0000-0002-6158-6928"
-title: "VT-Tool"
-version: 1.0.1
+title: "VeriSnip-Tool"
+version: 0.0.3
 doi: 
 date-released: 2025-06-10
-url: "https://github.com/LogicoreDesign/VT-Tool.git"
+url: "https://github.com/VeriSnip/VeriSnip-Tool.git"
