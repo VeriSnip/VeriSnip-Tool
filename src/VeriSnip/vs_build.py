@@ -642,7 +642,8 @@ def main():
             builder.build_sources()    # Copy sources into build/, performing snippet substitutions.
             vs_print(OK, f"Created {main_module} project build directory.")
         else:
-            vs_print(ERROR, f"Undefined main module!")
+            if not clean:
+                vs_print(ERROR, f"Undefined main module!")
             sys.exit(1)
 
         if post_build_script:
