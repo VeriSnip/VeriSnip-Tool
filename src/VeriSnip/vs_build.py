@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import argparse
+from typing import Any
 
 from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, vs_print
 
@@ -202,7 +203,7 @@ class VsBuilder:
         for source in sources:
             source_directories.append(source.directory)
 
-        return sorted(set(source_directories))
+        return sorted(set[Any](source_directories))
     
     def _resolve_source(self, source_file):
         file_list = self.snippet_files + self.verilog_files
@@ -219,7 +220,11 @@ class VsBuilder:
     # TO DO: revise function and use re.compile defined above
     def _analyse_file(self, source_file):
         if not source_file.directory:
-            vs_print(ERROR, f"{source_file.name} does not exist to analyse!")
+            vs_print(
+                ERROR,
+                f"Cannot resolve '{source_file.name}': missing from project sources and no "
+                f"generator produced it. Check include paths, module names, and generator scripts.",
+            )
             exit(1)
         with open(source_file.directory, "r") as f:
             content = f.read()
