@@ -45,12 +45,19 @@ class VsBuilder:
                     comment_arg = re.sub("{"+name+"}", value[0], comment_arg)
 
             if script_directory:
-                script_arguments = [
-                    script_directory,
-                    file_suffix,
-                    comment_arg,
-                ] + sys.argv[1:]
-                subprocess.run(script_arguments, check=True)
+                try:
+                    script_arguments = [
+                        script_directory,
+                        file_suffix,
+                        comment_arg,
+                    ] + sys.argv[1:]
+                    subprocess.run(script_arguments, check=True)
+                except subprocess.CalledProcessError as err:
+                    vs_print(ERROR, f"{script_directory} failed: \n{err}")
+                    sys.exit(1)
+                except OSError as err:
+                    vs_print(ERROR, f"Failed to execute {script_directory}: \n{err}")
+                    sys.exit(1)
                 
             generated_files = move_generated_files()
             for file in generated_files:
