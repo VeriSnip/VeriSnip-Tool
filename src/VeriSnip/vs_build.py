@@ -9,7 +9,7 @@ import sys
 import argparse
 from typing import Any
 
-from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, vs_print
+from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, CRITICAL, vs_print
 
 class VsBuilder:
     # TO DO: use these in the code
@@ -36,15 +36,15 @@ class VsBuilder:
             comment_arg = self.comment
             # Look for parameters name in comment_arg and replace by their value
             if parameters and self.comment:
-# TO DO: Run subprocess with different comment_arg curresponding to the different parameter pairs.
-#        If there is any parameters to replace, each generated file should be copied to the generated directry
-#        and renamed to f"{self.name}_{i}". We should generate a vs file with f"{self.name}".
-#        In this file we would write `generate begin if(<verify parameter pairs>) `include "{self.name}_{i}"
-#        else $display("Unsuported parameters").
+                # TO DO: Run subprocess with different comment_arg curresponding to the different parameter pairs.
+                #        If there is any parameters to replace, each generated file should be copied to the generated directry
+                #        and renamed to f"{self.name}_{i}". We should generate a vs file with f"{self.name}".
+                #        In this file we would write `generate begin if(<verify parameter pairs>) `include "{self.name}_{i}"
+                #        else $display("Unsuported parameters").
                 for name, value in parameters.items():
                     comment_arg = re.sub("{"+name+"}", value[0], comment_arg)
 
-            if script_directory:
+            if script_directory != "":
                 try:
                     script_arguments = [
                         script_directory,
@@ -58,14 +58,20 @@ class VsBuilder:
                 except OSError as err:
                     vs_print(ERROR, f"Failed to execute {script_directory}: \n{err}")
                     sys.exit(1)
+            else:
+                vs_print(CRITICAL, f"Failed to generate '{self.name}': no script found.")
+                return []
                 
             generated_files = move_generated_files()
             for file in generated_files:
                 basename = os.path.basename(file)
                 if basename == self.name or basename == self.name+".v" or basename == self.name+"sv":
                     self.directory = file
+
             if generated_files == []:
-                vs_print(WARNING, f"{self.name} generated no Verilog or VeriSnip files.")
+                vs_print(WARNING, f"'{self.name}': generated no Verilog or VeriSnip files.")
+            else:
+                vs_print(DEBUG, f"'{os.path.basename(script_directory)}': generated files: {[os.path.basename(file) for file in generated_files]}")
 
             return generated_files
 
@@ -88,8 +94,6 @@ class VsBuilder:
                             most_similar_file = file_path
                             file_suffix = "_".join(input_words[tmp_counter:])
                     tmp_string = tmp_string + "_"
-            if most_similar_file == "":
-                vs_print(WARNING, f'Could not locate any matching script to generate "{self.name}".')
             return most_similar_file, file_suffix
 
     def __init__(self, main_module, testbench, board_modules, parameters, include_directories):
@@ -124,7 +128,7 @@ class VsBuilder:
         for search_dir in [self.cwd] + self.include_directories:
             for root, dirnames, filenames in os.walk(search_dir, topdown=True):
                 # Prune irrelevant directories
-                dirnames[:] = [d for d in dirnames if d not in {".git", "build", "generated", "__pycache__"}]
+                dirnames[:] = [d for d in dirnames if d not in {".git", "build", "generated", "__pycache__", ".venv"}]
                 for fname in filenames:
                     name, ext = os.path.splitext(fname)
                     if name in excluded_files:
@@ -138,9 +142,9 @@ class VsBuilder:
                         snippet_files.append(fpath)
 
         # Deduplicate and sort for stable output
-        self.script_files = sorted(set(script_files))
-        self.verilog_files = sorted(set(verilog_files))
-        self.snippet_files = sorted(set(snippet_files))
+        self.script_files = sorted(set[Any](script_files))
+        self.verilog_files = sorted(set[Any](verilog_files))
+        self.snippet_files = sorted(set[Any](snippet_files))
 
         vs_print(DEBUG, f"Found ({len(self.verilog_files)}) verilog files:")
         for file_path in self.verilog_files:
@@ -152,7 +156,7 @@ class VsBuilder:
         for file_path in self.script_files:
             vs_print(DEBUG, f"\t{relative_path(file_path)}")
 
-    def resolve_sources(self):
+    def resolve_sources(self) -> None:
         """
         Build source trees for RTL, TestBench and Boards.
         - Generates missing HDL via scripts into generated/
@@ -195,15 +199,17 @@ class VsBuilder:
     # ---------- source resolution helpers ----------
 
     # TO DO: revise passing only directories
-    def _resolve_sources_tree(self, top_module):
+    def _resolve_sources_tree(self, top_module) -> list[str]:
         """
         Resolve all transitive sources for a given top module.
         """
         sources = [self.VsSource(top_module)]
         i = 0
         while i < len(sources):
-            self._resolve_source(sources[i])
-            sources += self._analyse_file(sources[i])
+            vs_print(DEBUG, f"Resolving source {sources[i].name}")
+            if self._resolve_source(sources[i]):
+                vs_print(DEBUG, f"Looking for dependencies of {sources[i].name}")
+                sources += self._analyse_file(sources[i])
             i+=1
         
         source_directories = []
@@ -212,17 +218,25 @@ class VsBuilder:
 
         return sorted(set[Any](source_directories))
     
-    def _resolve_source(self, source_file):
+    def _resolve_source(self, source_file) -> bool:
+        """
+        Resolve a single source file.
+        """
         file_list = self.snippet_files + self.verilog_files
         source_file.locate_src(file_list)
         if source_file.directory == "":
+            vs_print(DEBUG, f"'{source_file.name}': missing from project sources. Trying to generate it...")
             generated_files = source_file.generate(self.parameters, self.script_files)
+            if generated_files == []:
+                return False
             for file in generated_files:
-                if file.endswith(".vs"):
-                    self.snippet_files.append(file)
-                else:
-                    self.verilog_files.append(file)
-        return
+                    if file.endswith(".vs"):
+                        self.snippet_files.append(file)
+                    else:
+                        self.verilog_files.append(file)
+        else:
+            vs_print(DEBUG, f"'{source_file.name}': found in project sources.")
+        return True
 
     # TO DO: revise function and use re.compile defined above
     def _analyse_file(self, source_file):
@@ -232,7 +246,7 @@ class VsBuilder:
                 f"Cannot resolve '{source_file.name}': missing from project sources and no "
                 f"generator produced it. Check include paths, module names, and generator scripts.",
             )
-            exit(1)
+            sys.exit(1)
         with open(source_file.directory, "r") as f:
             content = f.read()
 
@@ -262,7 +276,7 @@ class VsBuilder:
                     # Replace with the actual parameter value
                     if name in self.parameters:
                         if value not in self.parameters[name]:
-                            self.parameters[name] = list(set(self.parameters[value]+self.parameters[name]))
+                            self.parameters[name] = list[Any](set[Any](self.parameters[value]+self.parameters[name]))
                     else:
                         self.parameters[name] = self.parameters[value]
                 elif re.match(r'^[A-Z_][A-Z0-9_]*$', value) and value not in self.parameters:
@@ -309,7 +323,7 @@ class VsBuilder:
     
     # -----------------------------------------------
 
-    def build_sources(self):
+    def build_sources(self) -> None:
         """
         Create build directories, copy files and substitute snippets.
         Reuse existing helper functions where possible.
@@ -324,23 +338,17 @@ class VsBuilder:
         pass
 
 
-def clean_build(current_directory):
+def clean_build(current_directory: str) -> None:
     """
-    Cleans the build directory by removing it and its contents.
-
-    Args:
-        current_directory (str): The current directory of the build.
+    Cleans the build and generated directories by removing them and their contents.
     """
     remove_directory(f"{current_directory}/build")
     remove_directory(f"{current_directory}/generated")
 
 
-def remove_directory(directory_to_remove):
+def remove_directory(directory_to_remove: str) -> None:
     """
     Removes a directory and its contents.
-
-    Args:
-        directory_to_remove (str): The directory to remove.
     """
     if not os.path.isdir(directory_to_remove):
         vs_print(DEBUG, f"Directory '{directory_to_remove}' does not exist; nothing to remove.")
@@ -354,12 +362,9 @@ def remove_directory(directory_to_remove):
         vs_print(WARNING, f"Could not remove directory. {e}")
 
 
-def create_directory(path):
+def create_directory(path: str) -> None:
     """
     Creates a directory at the specified path.
-
-    Args:
-        path (str): The path of the directory to be created.
     """
     try:
         os.makedirs(path, exist_ok=True)
@@ -367,18 +372,12 @@ def create_directory(path):
         vs_print(WARNING, f"Did not create directory: {e}")
 
 
-def relative_path(path):
+def relative_path(path: str) -> str:
     """
     Convert an absolute path to a relative path based on the current working directory.
-
-    Args:
-        path (str): The absolute path to be converted.
-
-    Returns:
-        str: The relative path derived from the given absolute path.
     """
-    path = os.path.relpath(path, os.getcwd())
-    return path
+    print(f"path: {path}")
+    return os.path.relpath(path, start=os.getcwd())
 
 
 def move_generated_files():

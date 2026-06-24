@@ -8,6 +8,7 @@ OK_BLUE = "\033[94m"  # Blue
 INFO = "\033[96mInfo"  # Cyan
 OK = "\033[92mDone"  # Green
 WARNING = "\033[93mWarning"  # Orange
+CRITICAL = "\033[38;5;208mCritical Warning"  # Dark Orange
 ERROR = "\033[91mError"  # Red
 DEBUG = "\033[95mDebug"  # Magenta
 NORMAL = "\033[0m"  # White
