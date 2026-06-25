@@ -204,7 +204,7 @@ class VsBuilder:
         Each referenced source is first located or generated, then scanned for further includes, module instantiations, and parameter references.
         """
         pending = [self.VsSource(top_module)]
-        deferred = []
+        deferred = {}
         scanned = set[Any]()
         sources_directories = set[Any]()
 
@@ -217,23 +217,27 @@ class VsBuilder:
                 scanned.add(source.name)
                 sources_directories.add(source.directory)
                 pending.extend(self._scan_source_dependencies(source))
-                pending.extend(self._retry_deferred_sources(deferred))
+                if not pending:
+                    vs_print(DEBUG, f"Retrying deferred sources: {list[Any](deferred.keys())}")
+                    pending.extend(self._retry_deferred_sources(deferred))
             else:
-                deferred.append(source)
+                deferred[source.name] = source
         
         if deferred:
-            vs_print(WARNING, f"The following sources could not be located or generated: {[source.name for source in deferred]}")
+            vs_print(WARNING, f"The following sources could not be located or generated: {list[Any](deferred.keys())}")
         
         return sorted(sources_directories)
     
-    def _retry_deferred_sources(self, deferred: list[VsSource]) -> list[VsSource]:
+    def _retry_deferred_sources(self, deferred: dict[str, VsSource]) -> list[VsSource]:
         """
-        This function retries to locate or generate the sources that were deferred.
+        This function retries to locate the sources that were deferred.
         """
-        resolved = []
-        for source in deferred[:]:
-            if self._locate_or_generate_source(source):
-                deferred.remove(source)
+        resolved = list[self.VsSource]()
+        file_list = self.snippet_files + self.verilog_files
+        for name, source in list[Any](deferred.items()):
+            source.locate_src(file_list)
+            if source.directory:
+                del deferred[name]
                 resolved.append(source)
         return resolved
     
