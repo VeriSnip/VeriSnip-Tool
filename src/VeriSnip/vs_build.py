@@ -158,27 +158,26 @@ class VsBuilder:
 
     def resolve_sources(self) -> None:
         """
-        Build source trees for RTL, TestBench and Boards.
-        - Generates missing HDL via scripts into generated/
-        - Populates: self.rtl_sources, self.testbench_sources, self.board_sources
+        This function builds the source lists needed for the RTL top module, testbench, and board wrappers.
+        Each list contains the Verilog/SystemVerilog and VeriSnip files reachable from its top module. Sources may already exist in the project or be generated from scripts when first referenced.
         """
         vs_print(INFO, f"Resolving sources for {self.main_module}...")
         generated_dir = os.path.join(self.cwd, "generated")
         create_directory(generated_dir)
 
         # Build RTL
-        self.rtl_sources = self._resolve_sources_tree(self.main_module)
+        self.rtl_sources = self._collect_dependency_tree(self.main_module)
 
         # Build TestBench (excluding RTL duplicates)
         # TO DO: is this hack acceptable?
         if locate_file_in_list(self.testbench, self.verilog_files) != "":
-            tb = self._resolve_sources_tree(self.testbench)
+            tb = self._collect_dependency_tree(self.testbench)
             self.testbench_sources = [f for f in tb if f not in self.rtl_sources]
 
         # Build Boards (each excluding RTL duplicates)
         self.board_sources = {}
         for board in self.board_modules:
-            srcs = self._resolve_sources_tree(board)
+            srcs = self._collect_dependency_tree(board)
             self.board_sources[board] = [f for f in srcs if f not in self.rtl_sources]
 
         # Debug print to verify resolved sources
@@ -199,28 +198,30 @@ class VsBuilder:
     # ---------- source resolution helpers ----------
 
     # TO DO: revise passing only directories
-    def _resolve_sources_tree(self, top_module) -> list[str]:
+    def _collect_dependency_tree(self, top_module: str) -> list[str]:
         """
-        Resolve all transitive sources for a given top module.
+        This function starts from a top module name, walks all discovered dependencies and returns the unique source file paths required to build the top module.
+        Each referenced source is first located or generated, then scanned for further includes, module instantiations, and parameter references.
         """
         sources = [self.VsSource(top_module)]
         i = 0
         while i < len(sources):
             vs_print(DEBUG, f"Resolving source {sources[i].name}")
-            if self._resolve_source(sources[i]):
+            if self._locate_or_generate_source(sources[i]):
                 vs_print(DEBUG, f"Looking for dependencies of {sources[i].name}")
-                sources += self._analyse_file(sources[i])
+                sources += self._scan_source_dependencies(sources[i])
             i+=1
         
         source_directories = []
         for source in sources:
-            source_directories.append(source.directory)
+            if source.directory != "":
+                source_directories.append(source.directory)
 
         return sorted(set[Any](source_directories))
     
-    def _resolve_source(self, source_file) -> bool:
+    def _locate_or_generate_source(self, source_file: VsSource) -> bool:
         """
-        Resolve a single source file.
+        This function locates a given source in the known project files, or generates it from a matching script if it is missing. If the generation is successful, the generated files are added to the snippet_files and verilog_files source lists. If the generation is not successful, the function returns False.
         """
         file_list = self.snippet_files + self.verilog_files
         source_file.locate_src(file_list)
@@ -239,7 +240,11 @@ class VsBuilder:
         return True
 
     # TO DO: revise function and use re.compile defined above
-    def _analyse_file(self, source_file):
+    def _scan_source_dependencies(self, source_file: VsSource) -> list[VsSource]:
+        """
+        This function scans a resolved source file and returns the sources it depends on. These dependencies can be either Verilog or VeriSnip files. They can be found from `include` directives and module instantiations.
+        The function also updates known parameter values from parameter declarations and parameterized module instantiations.
+        """
         if not source_file.directory:
             vs_print(
                 ERROR,
@@ -376,7 +381,6 @@ def relative_path(path: str) -> str:
     """
     Convert an absolute path to a relative path based on the current working directory.
     """
-    print(f"path: {path}")
     return os.path.relpath(path, start=os.getcwd())
 
 
