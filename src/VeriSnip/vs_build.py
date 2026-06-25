@@ -159,7 +159,7 @@ class VsBuilder:
     def resolve_sources(self) -> None:
         """
         This function builds the source lists needed for the RTL top module, testbench, and board wrappers.
-        Each list contains the Verilog/SystemVerilog and VeriSnip files reachable from its top module. Sources may already exist in the project or be generated from scripts when first referenced.
+        Each list contains the [System]Verilog and VeriSnip files reachable from its top module. Sources may already exist in the project or be generated from scripts when first referenced.
         """
         vs_print(INFO, f"Resolving sources for {self.main_module}...")
         generated_dir = os.path.join(self.cwd, "generated")
@@ -242,7 +242,7 @@ class VsBuilder:
     # TO DO: revise function and use re.compile defined above
     def _scan_source_dependencies(self, source_file: VsSource) -> list[VsSource]:
         """
-        This function scans a resolved source file and returns the sources it depends on. These dependencies can be either Verilog or VeriSnip files. They can be found from `include` directives and module instantiations.
+        This function scans a resolved source file and returns the sources it depends on. These dependencies can be either [System]Verilog or VeriSnip files. They can be found from `include` directives and module instantiations.
         The function also updates known parameter values from parameter declarations and parameterized module instantiations.
         """
         if not source_file.directory:
