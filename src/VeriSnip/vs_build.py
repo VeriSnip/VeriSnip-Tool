@@ -203,21 +203,39 @@ class VsBuilder:
         This function starts from a top module name, walks all discovered dependencies and returns the unique source file paths required to build the top module.
         Each referenced source is first located or generated, then scanned for further includes, module instantiations, and parameter references.
         """
-        sources = [self.VsSource(top_module)]
-        i = 0
-        while i < len(sources):
-            vs_print(DEBUG, f"Resolving source {sources[i].name}")
-            if self._locate_or_generate_source(sources[i]):
-                vs_print(DEBUG, f"Looking for dependencies of {sources[i].name}")
-                sources += self._scan_source_dependencies(sources[i])
-            i+=1
-        
-        source_directories = []
-        for source in sources:
-            if source.directory != "":
-                source_directories.append(source.directory)
+        pending = [self.VsSource(top_module)]
+        deferred = []
+        scanned = set[Any]()
+        sources_directories = set[Any]()
 
-        return sorted(set[Any](source_directories))
+        while pending:
+            source = pending.pop(0)
+            status = self._locate_or_generate_source(source)
+            if status:
+                if source.name in scanned:
+                    continue
+                scanned.add(source.name)
+                sources_directories.add(source.directory)
+                pending.extend(self._scan_source_dependencies(source))
+                pending.extend(self._retry_deferred_sources(deferred))
+            else:
+                deferred.append(source)
+        
+        if deferred:
+            vs_print(WARNING, f"The following sources could not be located or generated: {[source.name for source in deferred]}")
+        
+        return sorted(sources_directories)
+    
+    def _retry_deferred_sources(self, deferred: list[VsSource]) -> list[VsSource]:
+        """
+        This function retries to locate or generate the sources that were deferred.
+        """
+        resolved = []
+        for source in deferred[:]:
+            if self._locate_or_generate_source(source):
+                deferred.remove(source)
+                resolved.append(source)
+        return resolved
     
     def _locate_or_generate_source(self, source_file: VsSource) -> bool:
         """
@@ -225,12 +243,17 @@ class VsBuilder:
         """
         file_list = self.snippet_files + self.verilog_files
         source_file.locate_src(file_list)
+        
         if source_file.directory == "":
             vs_print(DEBUG, f"'{source_file.name}': missing from project sources. Trying to generate it...")
-            generated_files = source_file.generate(self.parameters, self.script_files)
-            if generated_files == []:
+            if "VS_NO_GENERATE" in source_file.comment:
+                vs_print(DEBUG, f"'{source_file.name}': VS_NO_GENERATE found in comment. Skipping generation.")
                 return False
-            for file in generated_files:
+            else:
+                generated_files = source_file.generate(self.parameters, self.script_files)
+                if generated_files == []:
+                    return False
+                for file in generated_files:
                     if file.endswith(".vs"):
                         self.snippet_files.append(file)
                     else:
@@ -298,7 +321,6 @@ class VsBuilder:
 
         # TO DO: look for VeriSnip depedencies
         file_dependencies = []
-        non_generated_file_dependencies = []
         includePattern = r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)'
         multiCommentIncludePattern = r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/'
         
@@ -309,12 +331,8 @@ class VsBuilder:
             matches = re.finditer(pattern, content)
             for item in matches:
                 new_file = self.VsSource(item.group(1))
-                comment_arg = item.group(2).strip()
-                if "VS_NO_GENERATE" in comment_arg:
-                    non_generated_file_dependencies.append(new_file)
-                else:
-                    new_file.comment = comment_arg
-                    file_dependencies.append(new_file)
+                new_file.comment = item.group(2).strip()
+                file_dependencies.append(new_file)
 
         # TO DO: look for instantiated Verilog files and passed parameters
         # TO DO: verify regex expression
@@ -324,7 +342,7 @@ class VsBuilder:
             new_file = self.VsSource(item.group(1))
             file_dependencies.append(new_file)
 
-        return file_dependencies + non_generated_file_dependencies
+        return file_dependencies
     
     # -----------------------------------------------
 
@@ -416,36 +434,33 @@ def locate_file_in_list(filename, files_list):
     return found_files
 
 
-def build_verilog_sources(sources, build_dir):
+def build_verilog_sources(sources: list[str], build_dir: str) -> None:
+    """
+    Builds Verilog sources from a list of source files and a build directory.
+    """
     create_directory(build_dir)
-    for verilog_file in sources:
-        if not verilog_file.endswith(".vs"):
-            verilog_content = ""
-            verilog_content = substitute_vs_file(verilog_file, sources)
-            file_name = os.path.basename(verilog_file)
-            destination_path = f"{build_dir}/{file_name}"
+    verilog_files = [file for file in sources if not file.endswith(".vs")]
+    verisnip_files = [file for file in sources if file.endswith(".vs")]
+    for verilog_file in verilog_files:
+        verilog_content = ""
+        verilog_content = substitute_vs_file(verilog_file, verisnip_files)
+        file_name = os.path.basename(verilog_file)
+        destination_path = f"{build_dir}/{file_name}"
 
-            # Check if file exists and compare contents
-            if os.path.exists(destination_path):
-                with open(destination_path, "r") as existing_file:
-                    existing_content = existing_file.read()
-                if existing_content == verilog_content:
-                    vs_print(DEBUG, f"File '{file_name}' unchanged, skipping write.")
-                    continue
-            with open(f"{build_dir}/{file_name}", "w") as file:
-                file.write(verilog_content)
+        # Check if file exists and compare contents
+        if os.path.exists(destination_path):
+            with open(destination_path, "r") as existing_file:
+                existing_content = existing_file.read()
+            if existing_content == verilog_content:
+                vs_print(DEBUG, f"File '{file_name}' unchanged, skipping write.")
+                continue
+        with open(f"{build_dir}/{file_name}", "w") as file:
+            file.write(verilog_content)
 
 
-def substitute_vs_file(source_file, sources_list):
+def substitute_vs_file(source_file: str, sources_list: list[str]) -> str:
     """
     Recursively substitutes included .vs files in the source file content.
-
-    Args:
-        source_file (str): The source file containing potential `include directives.
-        sources_list (list): List of source file paths.
-
-    Returns:
-        str: The new content with included .vs files substituted.
     """
     new_content = ""
     on_comment = False
