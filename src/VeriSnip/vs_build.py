@@ -627,8 +627,9 @@ def parse_arguments():
 
 
 def run_script(path: str, stage: str) -> None:
-    print(f"Running {stage} script...")
-    subprocess.run([path], check=True)
+    vs_print(INFO, f"Running {stage} script...")
+    current_directory = os.getcwd()
+    subprocess.run([os.path.join(current_directory, path)], check=True)
 
 
 def main():
