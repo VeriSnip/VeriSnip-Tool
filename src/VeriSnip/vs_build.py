@@ -628,8 +628,29 @@ def parse_arguments():
 
 def run_script(path: str, stage: str) -> None:
     vs_print(INFO, f"Running {stage} script...")
-    current_directory = os.getcwd()
-    subprocess.run([os.path.join(current_directory, path)], check=True)
+
+    # 1. Check if the path is relative or absolute
+    if os.path.isabs(path):
+        script_path = path
+    else:
+        script_path = os.path.join(os.getcwd(), path)
+
+    # 2. Check if the script exists
+    if not os.path.exists(script_path):
+        vs_print(ERROR, f"{stage} script not found at {script_path}")
+        sys.exit(1) 
+
+    # 3. Run the script and catch errors
+    try:
+        subprocess.run([script_path], check=True)
+    except subprocess.CalledProcessError as err:
+        vs_print(ERROR, f"{stage} script failed with exit code {err.returncode}.")
+        sys.exit(1)
+    except OSError as err:
+        vs_print(ERROR, f"Failed to execute {stage} script: {err}")
+        sys.exit(1)
+
+    return
 
 
 def main():
