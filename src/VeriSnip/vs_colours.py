@@ -8,6 +8,7 @@ OK_BLUE = "\033[94m"  # Blue
 INFO = "\033[96mInfo"  # Cyan
 OK = "\033[92mDone"  # Green
 WARNING = "\033[93mWarning"  # Orange
+NOTE = "\033[38;5;229mNOTE"  # Light yellow
 CRITICAL = "\033[38;5;208mCritical Warning"  # Dark Orange
 ERROR = "\033[91mError"  # Red
 DEBUG = "\033[95mDebug"  # Magenta
@@ -21,12 +22,14 @@ def vs_print(modifier, string):
         modifier: The text modifier.
         string: The string to print."""
     script_name = os.path.basename(sys.argv[0])
-    # Check conditions for printing based on arguments and modifier
-    if modifier == DEBUG:
-        if "--debug" in sys.argv:
-            print(f"{modifier} ({script_name}): {string}{NORMAL}")
-    elif modifier == INFO:
-        if "--quiet" not in sys.argv:
-            print(f"{modifier} ({script_name}): {string}{NORMAL}")
-    else:
-        print(f"{modifier} ({script_name}): {string}{NORMAL}")
+    quiet = "--quiet" in sys.argv
+    debug = "--debug" in sys.argv
+
+    if modifier in (DEBUG, NOTE):
+        if not debug:
+            return
+    elif modifier in (INFO, WARNING):
+        if quiet:
+            return
+
+    print(f"{modifier} ({script_name}): {string}{NORMAL}")

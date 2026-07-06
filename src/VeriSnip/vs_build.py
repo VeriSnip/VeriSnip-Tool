@@ -9,11 +9,17 @@ import sys
 import argparse
 from typing import Any
 
-from .vs_colours import INFO, OK, WARNING, ERROR, DEBUG, CRITICAL, vs_print
+from .vs_colours import INFO, OK, WARNING, NOTE, ERROR, DEBUG, CRITICAL, vs_print
 
 class VsBuilder:
-    # TO DO: use these in the code
     _RE_MOD_INST = re.compile(r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);")
+    _VERILOG_KEYWORDS = frozenset[str]({
+        "module", "endmodule", "initial", "always", "assign", "if", "else",
+        "for", "while", "case", "endcase", "begin", "end", "function",
+        "endfunction", "task", "endtask", "generate", "endgenerate",
+        "wire", "reg", "logic", "input", "output", "inout", "parameter",
+        "localparam", "posedge", "negedge",
+    })
     _RE_INC = re.compile(r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)')
     _RE_INC_BLOCK = re.compile(r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/')
     _RE_PARAM_DEF = re.compile(r'^\s*parameter\s+(?:\w+\s+)?(\w+)\s*=\s*([^,;\n)]+)', re.MULTILINE)
@@ -338,13 +344,15 @@ class VsBuilder:
                 new_file.comment = item.group(2).strip()
                 file_dependencies.append(new_file)
 
-        # TO DO: look for instantiated Verilog files and passed parameters
-        # TO DO: verify regex expression
-        moduleInstantiationPattern = r"\n\s*(\w+)\s+(?:#\([.\w\s,()]*?\))?\s*\w+?\s*?[(]+[.\w\s,()]+?[)]+;"
-        matches = re.finditer(moduleInstantiationPattern, content)
-        for item in matches:
-            new_file = self.VsSource(item.group(1))
-            file_dependencies.append(new_file)
+        for match in self._RE_MOD_INST.finditer(content):
+            module_name = match.group(1)
+            if module_name in self._VERILOG_KEYWORDS:
+                vs_print(
+                    NOTE,
+                    f"Skipped '{module_name}' in {filename}: looks like a Verilog keyword, not a module instantiation.",
+                )
+                continue
+            file_dependencies.append(self.VsSource(module_name))
 
         return file_dependencies
     
@@ -525,7 +533,7 @@ def build_parser():
     parser.add_argument("--pre-build", dest="pre_build", help="Path to script executed before build.")
     parser.add_argument("--post-build", dest="post_build", help="Path to script executed after a successful build.")
     parser.add_argument("--clean", action="store_true", dest="clean", help="Remove build and generated directories.")
-    parser.add_argument("--quiet", action="store_true", help="Suppresses INFO prints.")
+    parser.add_argument("--quiet", action="store_true", help="Suppresses INFO, WARNING, NOTE, and DEBUG prints.")
     parser.add_argument("--debug", action="store_true", help="Enables DEBUG prints.")
     return parser
 
