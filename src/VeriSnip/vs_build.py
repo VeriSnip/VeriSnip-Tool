@@ -272,7 +272,6 @@ class VsBuilder:
             vs_print(DEBUG, f"'{source_file.name}': found in project sources.")
         return True
 
-    # TO DO: revise function and use re.compile defined above
     def _scan_source_dependencies(self, source_file: VsSource) -> list[VsSource]:
         """
         This function scans a resolved source file and returns the sources it depends on. These dependencies can be either [System]Verilog or VeriSnip files. They can be found from `include` directives and module instantiations.
@@ -289,9 +288,7 @@ class VsBuilder:
             content = f.read()
 
         filename = os.path.basename(source_file.directory)
-        # TO DO: look for aditional parameter definitions
-        param_def_pattern = r'^\s*parameter\s+(?:\w+\s+)?(\w+)\s*=\s*(.[^\s,\n)]+)'
-        for match in re.finditer(param_def_pattern, content, re.MULTILINE):
+        for match in self._RE_PARAM_DEF.finditer(content):
             name = match.group(1)
             value = match.group(2).strip()
             if name in self.parameters:
@@ -299,50 +296,32 @@ class VsBuilder:
                     self.parameters[name].append(value)
             else:
                 self.parameters[name] = [value]
-        
-        # Find parameter instantiations in module instances
-        param_inst_pattern = r'\.(\w+)\s*\(\s*([^)]+?)\s*\)'
-        module_inst_with_params = r'\n\s*?\w+?\s+?#\(([\s\S]*?)\)\s*?\w+?\s*?\('
-        for inst_match in re.finditer(module_inst_with_params, content):
+
+        for inst_match in self._RE_PARAM_BLOCK_IN_INST.finditer(content):
             param_block = inst_match.group(1)
-            # Extract individual parameter assignments
-            for param_match in re.finditer(param_inst_pattern, param_block):
+            for param_match in self._RE_PARAM_PAIR.finditer(param_block):
                 name = param_match.group(1)
                 value = param_match.group(2).strip()
-                # Check if value references another parameter
                 if value in self.parameters:
-                    # Replace with the actual parameter value
                     if name in self.parameters:
                         if value not in self.parameters[name]:
                             self.parameters[name] = list[Any](set[Any](self.parameters[value]+self.parameters[name]))
                     else:
                         self.parameters[name] = self.parameters[value]
                 elif re.match(r'^[A-Z_][A-Z0-9_]*$', value) and value not in self.parameters:
-                    # If it looks like a parameter name but isn't defined, throw an error
                     vs_print(ERROR, f"Parameter {value} used in instantiation in {filename} is not defined in parameters dictionary")
                     exit(1)
-                    # Add to parameters if not already present
-                    if name in self.parameters:
-                        if value not in self.parameters[name]:
-                            self.parameters[name].append(value)
-                    else:
-                        self.parameters[name] = [value]
 
-
-        # TO DO: look for VeriSnip depedencies
         file_dependencies = []
-        includePattern = r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)'
-        multiCommentIncludePattern = r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/'
-        
-        for pattern in [
-            includePattern,
-            multiCommentIncludePattern,
-        ]:
-            matches = re.finditer(pattern, content)
-            for item in matches:
-                new_file = self.VsSource(item.group(1))
-                new_file.comment = item.group(2).strip()
-                file_dependencies.append(new_file)
+        for item in self._RE_INC.finditer(content):
+            new_file = self.VsSource(item.group(1))
+            new_file.comment = item.group(2).strip()
+            file_dependencies.append(new_file)
+
+        for item in self._RE_INC_BLOCK.finditer(content):
+            new_file = self.VsSource(item.group(1))
+            new_file.comment = item.group(2).strip()
+            file_dependencies.append(new_file)
 
         for match in self._RE_MOD_INST.finditer(content):
             module_name = match.group(1)

@@ -37,7 +37,7 @@ Create a build directory containing all the compiled hardware:
 > \--inc_dir \<directories\> (optional) -> Space-separated list of include directories.
 > \--pre-build \<script_path\> (optional) -> Path to a script executed before the build.
 > \--post-build \<script_path\> (optional) -> Path to a script executed after a successful build.
-> \--quiet (optional) -> suppresses INFO prints.
+> \--quiet (optional) -> suppresses INFO, WARNING, NOTE, and DEBUG prints.
 > \--debug (optional) -> enables DEBUG prints.
 > Parameters: Additional parameters can be passed in the format NAME=VALUE (e.g., WIDTH=8).
 
@@ -180,6 +180,17 @@ Contributions in the form of automatically generated Verilog scripts should be p
 ## Development Environment
 
 To utilize *vs\_build*, all that's necessary is Python3 and support for the scripting languages in which your scripts are written.
+
+### Running tests
+
+From the VeriSnip-Tool repository root:
+
+```bash
+pip install -e ".[test]"
+PYTHONPATH=src pytest tests/ -v
+```
+
+If you already have `pytest` installed, `pip install -e .` is sufficient.
 
 ## Credits
 

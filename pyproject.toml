@@ -18,6 +18,9 @@ classifiers = [
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
 
 [project.urls]
 Homepage = "https://github.com/LogicoreDesign/VT-Tool.git"
