@@ -74,3 +74,32 @@ endmodule
     source.directory = str(path)
     builder._scan_source_dependencies(source)
     assert "8" in builder.parameters["DATA_WIDTH"]
+
+
+def test_localparam_definition_scanned():
+    content = """
+module tb ();
+  localparam integer RAM_ADDR_WIDTH = 16;
+endmodule
+"""
+    builder, path = _builder_with_file(content, name="tb.sv")
+    source = builder.VsSource("tb")
+    source.directory = str(path)
+    builder._scan_source_dependencies(source)
+    assert builder.parameters["RAM_ADDR_WIDTH"] == ["16"]
+
+
+def test_localparam_instantiation_resolves_reference():
+    content = """
+module tb ();
+  localparam integer RAM_ADDR_WIDTH = 16;
+  axi_ram #(
+    .ADDR_WIDTH(RAM_ADDR_WIDTH)
+  ) u_ram ();
+endmodule
+"""
+    builder, path = _builder_with_file(content, name="tb.sv")
+    source = builder.VsSource("tb")
+    source.directory = str(path)
+    builder._scan_source_dependencies(source)
+    assert "16" in builder.parameters["ADDR_WIDTH"]

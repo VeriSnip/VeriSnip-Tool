@@ -22,7 +22,12 @@ class VsBuilder:
     })
     _RE_INC = re.compile(r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)')
     _RE_INC_BLOCK = re.compile(r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/')
-    _RE_PARAM_DEF = re.compile(r'^\s*parameter\s+(?:\w+\s+)?(\w+)\s*=\s*([^,;\n)]+)', re.MULTILINE)
+    _RE_PARAM_DEF = re.compile(
+        r'^\s*(?:localparam|parameter)\s+'
+        r'(?:(?:integer|int|logic|bit|byte|shortint|longint|time|real|string|realtime)\s+)?'
+        r'(\w+)\s*=\s*([^,;\n)]+)',
+        re.MULTILINE,
+    )
     _RE_PARAM_PAIR = re.compile(r'\.(\w+)\s*\(\s*([^)]+?)\s*\)')
     _RE_PARAM_BLOCK_IN_INST = re.compile(r'\n\s*?\w+?\s+?#\(([\s\S]*?)\)\s*?\w+?\s*?\(')
 
