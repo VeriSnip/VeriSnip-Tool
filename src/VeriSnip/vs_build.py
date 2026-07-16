@@ -64,7 +64,8 @@ class VsBuilder:
                     ] + sys.argv[1:]
                     subprocess.run(script_arguments, check=True)
                 except subprocess.CalledProcessError as err:
-                    vs_print(ERROR, f"{script_directory} failed: \n{err}")
+                    vs_print(ERROR, f"{script_directory} failed!")
+                    vs_print(NOTE, f"{err}")
                     sys.exit(1)
                 except OSError as err:
                     vs_print(ERROR, f"Failed to execute {script_directory}: \n{err}")
