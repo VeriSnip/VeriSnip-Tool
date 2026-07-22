@@ -12,7 +12,7 @@ import pytest
 from VeriSnip.vs_build import VsBuilder
 
 
-# Include name "snippet_body.vs" matches script "snippet.py" with suffix "body.vs".
+# Include name "snippet_body.vs" matches script "snippet.py" with suffix "body".
 GENERATOR_SCRIPT = textwrap.dedent(
     '''\
     #!/usr/bin/env python3
@@ -26,9 +26,10 @@ GENERATOR_SCRIPT = textwrap.dedent(
             break
 
     # vs_build argv layout: [suffix, comment, *vs_build_argv[1:]]
-    suffix = sys.argv[1] if len(sys.argv) > 1 else "body.vs"
+    # suffix is without .vs (e.g. "body" for snippet_body.vs -> snippet.py)
+    suffix = sys.argv[1] if len(sys.argv) > 1 else "body"
     comment = sys.argv[2] if len(sys.argv) > 2 else ""
-    out_name = f"snippet_{suffix}"
+    out_name = f"snippet_{suffix}.vs"
 
     with open(out_name, "w", encoding="utf-8") as f:
         f.write(f"// generated tag={tag} comment={comment}\\n")

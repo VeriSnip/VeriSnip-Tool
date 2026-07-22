@@ -96,8 +96,8 @@ The Verilog Template extension (".vt") is specific to VeriSnip. If you compile a
 When *vs\_build* calls another program, it passes a variable number of arguments. Nevertheless, it always follows the same order. Therefore, take into consideration the following arguments and their order when developing your program or script:
 
 * Path to the program or script being called
-* Difference between the ".vs" filename and the program/script name. It corresponds to the suffix of the program/script name
-* Comment written after the "\`include"
+* Difference between the ".vs" filename stem and the program/script name. This is the underscore-separated suffix after the matched script name, **without** the `.vs` extension. Examples: `` `include "Test.vs" `` matching `Test.py` passes an empty string; `` `include "Test_logic.vs" `` matching `Test.py` passes `logic`.
+* Comment written after `` `include "Example.vs" ...``
 * All arguments with which *vs\_build* was invoked (`sys.argv[1:]`), including the main module, options, and any extra positional arguments. Scripts can ignore what they do not need.
 
 ### Code structure

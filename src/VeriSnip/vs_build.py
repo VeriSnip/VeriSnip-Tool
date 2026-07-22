@@ -71,7 +71,8 @@ class VsBuilder:
 
         # TO DO: revise function
         def _find_script(self, script_files):
-            input_words = self.name.split("_")
+            stem = self.name.removesuffix(".vs")
+            input_words = stem.split("_") if stem else []
             similar_word_counter = 0
             most_similar_file = ""
             file_suffix = ""
