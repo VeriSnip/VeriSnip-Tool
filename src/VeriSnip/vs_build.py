@@ -12,7 +12,7 @@ from typing import Any
 from .vs_colours import INFO, OK, WARNING, NOTE, ERROR, DEBUG, CRITICAL, vs_print
 
 class VsBuilder:
-    _RE_MOD_INST = re.compile(r"\n\s*?(\w+?)\s+?(?:#\([\s\S]*?\))?\s*?(\w+?)\s*?\(\s*?(\.\w+?\s*?\([\s\S]*?)\);")
+    _RE_MOD_INST = re.compile(r"\n\s*?(\w+?)\s+?(?:#\((?:[\s\S]*?)\))?\s*?(?:\w+?)\s*?\(\s*?(?:\.\w+?\s*?\([\s\S]*?)\);")
     _VERILOG_KEYWORDS = frozenset[str]({
         "module", "endmodule", "initial", "always", "assign", "if", "else",
         "for", "while", "case", "endcase", "begin", "end", "function",
@@ -22,14 +22,6 @@ class VsBuilder:
     })
     _RE_INC = re.compile(r'\n\s*?`include\s+?"(.*?)"(?!\s*?/\*)(.*)')
     _RE_INC_BLOCK = re.compile(r'\n\s*?`include\s+?"(.*?)"\s*?/\*([\s\S]*?)\*/')
-    _RE_PARAM_DEF = re.compile(
-        r'^\s*(?:localparam|parameter)\s+'
-        r'(?:(?:integer|int|logic|bit|byte|shortint|longint|time|real|string|realtime)\s+)?'
-        r'(\w+)\s*=\s*([^,;\n)]+)',
-        re.MULTILINE,
-    )
-    _RE_PARAM_PAIR = re.compile(r'\.(\w+)\s*\(\s*([^)]+?)\s*\)')
-    _RE_PARAM_BLOCK_IN_INST = re.compile(r'\n\s*?\w+?\s+?#\(([\s\S]*?)\)\s*?\w+?\s*?\(')
 
     class VsSource:
         def __init__(self, name):
@@ -42,25 +34,15 @@ class VsBuilder:
             self.directory = locate_file_in_list(self.name, src_list)
 
         # TO DO: revise function
-        def generate(self, parameters, script_files):
+        def generate(self, script_files):
             script_directory, file_suffix = self._find_script(script_files)
-            comment_arg = self.comment
-            # Look for parameters name in comment_arg and replace by their value
-            if parameters and self.comment:
-                # TO DO: Run subprocess with different comment_arg curresponding to the different parameter pairs.
-                #        If there is any parameters to replace, each generated file should be copied to the generated directry
-                #        and renamed to f"{self.name}_{i}". We should generate a vs file with f"{self.name}".
-                #        In this file we would write `generate begin if(<verify parameter pairs>) `include "{self.name}_{i}"
-                #        else $display("Unsuported parameters").
-                for name, value in parameters.items():
-                    comment_arg = re.sub("{"+name+"}", value[0], comment_arg)
 
             if script_directory != "":
                 try:
                     script_arguments = [
                         script_directory,
                         file_suffix,
-                        comment_arg,
+                        self.comment,
                     ] + sys.argv[1:]
                     subprocess.run(script_arguments, check=True)
                 except subprocess.CalledProcessError as err:
@@ -108,13 +90,13 @@ class VsBuilder:
                     tmp_string = tmp_string + "_"
             return most_similar_file, file_suffix
 
-    def __init__(self, main_module, testbench, board_modules, parameters, include_directories):
+    def __init__(self, main_module, testbench, board_modules, include_directories):
         self.cwd = os.getcwd()
         self.main_module = main_module
         self.testbench = testbench
         self.board_modules = board_modules or []
-        self.parameters = parameters or {}
         self.include_directories = include_directories or []
+        self.source_configs = {}
 
         # discover files (implement or call your existing finder)
         self.script_files = []
@@ -213,7 +195,7 @@ class VsBuilder:
     def _collect_dependency_tree(self, top_module: str) -> list[str]:
         """
         This function starts from a top module name, walks all discovered dependencies and returns the unique source file paths required to build the top module.
-        Each referenced source is first located or generated, then scanned for further includes, module instantiations, and parameter references.
+        Each referenced source is first located or generated, then scanned for further includes and module instantiations.
         """
         pending = [self.VsSource(top_module)]
         deferred = {}
@@ -222,6 +204,18 @@ class VsBuilder:
 
         while pending:
             source = pending.pop(0)
+
+            cfg = source.comment
+            if source.name in self.source_configs:
+                if self.source_configs[source.name] != cfg:
+                    vs_print(ERROR, f"Source '{source.name}' referenced with conflicting configurations:\n"
+                                    f"  Previous: {self.source_configs[source.name]}\n"
+                                    f"  New:      {cfg}\n"
+                                    f"VeriSnip currently supports only one configuration per generated file.")
+                    sys.exit(1)
+            else:
+                self.source_configs[source.name] = cfg
+
             status = self._locate_or_generate_source(source)
             if status:
                 if source.name in scanned:
@@ -266,7 +260,7 @@ class VsBuilder:
                 vs_print(DEBUG, f"'{source_file.name}': VS_NO_GENERATE found in comment. Skipping generation.")
                 return False
             else:
-                generated_files = source_file.generate(self.parameters, self.script_files)
+                generated_files = source_file.generate(self.script_files)
                 if generated_files == []:
                     return False
                 for file in generated_files:
@@ -281,7 +275,6 @@ class VsBuilder:
     def _scan_source_dependencies(self, source_file: VsSource) -> list[VsSource]:
         """
         This function scans a resolved source file and returns the sources it depends on. These dependencies can be either [System]Verilog or VeriSnip files. They can be found from `include` directives and module instantiations.
-        The function also updates known parameter values from parameter declarations and parameterized module instantiations.
         """
         if not source_file.directory:
             vs_print(
@@ -294,30 +287,6 @@ class VsBuilder:
             content = f.read()
 
         filename = os.path.basename(source_file.directory)
-        for match in self._RE_PARAM_DEF.finditer(content):
-            name = match.group(1)
-            value = match.group(2).strip()
-            if name in self.parameters:
-                if value not in self.parameters[name]:
-                    self.parameters[name].append(value)
-            else:
-                self.parameters[name] = [value]
-
-        for inst_match in self._RE_PARAM_BLOCK_IN_INST.finditer(content):
-            param_block = inst_match.group(1)
-            for param_match in self._RE_PARAM_PAIR.finditer(param_block):
-                name = param_match.group(1)
-                value = param_match.group(2).strip()
-                if value in self.parameters:
-                    if name in self.parameters:
-                        if value not in self.parameters[name]:
-                            self.parameters[name] = list[Any](set[Any](self.parameters[value]+self.parameters[name]))
-                    else:
-                        self.parameters[name] = self.parameters[value]
-                elif re.match(r'^[A-Z_][A-Z0-9_]*$', value) and value not in self.parameters:
-                    vs_print(ERROR, f"Parameter {value} used in instantiation in {filename} is not defined in parameters dictionary")
-                    exit(1)
-
         file_dependencies = []
         for item in self._RE_INC.finditer(content):
             new_file = self.VsSource(item.group(1))
@@ -331,12 +300,14 @@ class VsBuilder:
 
         for match in self._RE_MOD_INST.finditer(content):
             module_name = match.group(1)
+
             if module_name in self._VERILOG_KEYWORDS:
                 vs_print(
                     NOTE,
                     f"Skipped '{module_name}' in {filename}: looks like a Verilog keyword, not a module instantiation.",
                 )
                 continue
+
             file_dependencies.append(self.VsSource(module_name))
 
         return file_dependencies
@@ -496,14 +467,16 @@ def build_parser():
         "Examples:\n"
         "  vs_build top\n"
         "  vs_build top --TestBench top_tb --Boards \"Board1 Board2\"\n"
-        "  vs_build top --inc_dir \"./rtl ../shared\" WIDTH=8\n"
+        "  vs_build top --inc_dir \"./rtl ../shared\"\n"
         "  vs_build top --pre-build scripts/setup.sh --post-build scripts/cleanup.sh\n"
+        "  vs_build top EXTRA_FLAG=1\n"
         "  vs_build --clean\n\n"
         "Notes:\n"
         "  1. --TestBench defaults to <main_module>_tb.\n"
         "  2. --Boards accepts a space-separated string.\n"
         "  3. --inc_dir accepts a space-separated string.\n"
-        "  4. Additional parameters use NAME=VALUE (for example WIDTH=8, DEPTH=16'h00FF)."
+        "  4. Extra positional arguments (for example EXTRA_FLAG=1) are forwarded\n"
+        "     to generator scripts together with the rest of vs_build's argv.\n"
     )
     parser = argparse.ArgumentParser(
         prog="vs_build",
@@ -528,10 +501,11 @@ def parse_arguments():
     Parses arguments with which vs_build is called.
 
     Returns:
-        tuple: A tuple containing the module_name (string), testbench_name (string), board_modules (list) and parameters (dict).
+        tuple: A tuple containing the module_name (string), testbench_name (string),
+        board_modules (list), and include_directories (list).
 
     This function parses command-line arguments provided when calling vs_build. It extracts information such as the
-    module name, testbench name, supported board modules, and any parameters passed on the command line.
+    module name, testbench name, supported board modules, and include directories.
     """
     parser = build_parser()
 
@@ -540,7 +514,6 @@ def parse_arguments():
     module_name = parsed_args.module_name
     testbench_name = parsed_args.testbench_name
     board_modules = []
-    parameters = {}
     include_directories = []
 
     if testbench_name and re.match(r"^\s*$", testbench_name):
@@ -574,29 +547,13 @@ def parse_arguments():
                 exit(1)
 
     for arg in unknown_args:
-        parameter = re.match(r'^(\w+)="?([^"]+)"?$', arg)
         if arg.startswith("--"):
             vs_print(ERROR, f"Unknown argument {arg}")
             parser.print_help()
             exit(1)
-        if parameter:
-            name = parameter.group(1)
-            value = parameter.group(2)
-
-            # Validate if it's a valid Verilog number format or integer
-            verilog_pattern = r"^\d+('[bBdDhH][0-9a-fA-F_]+)$"
-            integer_pattern = r"^\d+$"
-
-            if re.match(verilog_pattern, value) or re.match(integer_pattern, value):
-                if name in parameters:
-                    parameters[name].append(value)
-                else:
-                    parameters[name] = [value]
-                vs_print(DEBUG, f"Parsed parameter {name} = {value}")
-            else:
-                vs_print(WARNING, f"Invalid parameter value format: {arg}")
-        else:
-            vs_print(WARNING, f"Ignoring unrecognized positional argument: {arg}")
+        # Extra positionals are intentionally left in sys.argv so generator
+        # scripts receive them when invoked from VsSource.generate().
+        vs_print(DEBUG, f"Extra argument will be forwarded to generator scripts: {arg}")
     
     # Post-processing: apply "_" prefix expansion now that module_name is known
     if testbench_name and testbench_name.startswith("_") and module_name:
@@ -611,7 +568,6 @@ def parse_arguments():
         module_name,
         testbench_name,
         board_modules,
-        parameters,
         include_directories,
         parsed_args.clean,
         parsed_args.pre_build,
@@ -661,7 +617,6 @@ def main():
         main_module,
         testbench,
         board_modules,
-        parameters,
         include_directories,
         clean,
         pre_build_script,
@@ -686,7 +641,7 @@ def main():
 
         if main_module is not None:
             current_stage = "build"
-            builder = VsBuilder(main_module, testbench, board_modules, parameters, include_directories)
+            builder = VsBuilder(main_module, testbench, board_modules, include_directories)
             builder.resolve_sources()  # Resolve and generate any missing HDL/snippet files; populate source lists.
             builder.build_sources()    # Copy sources into build/, performing snippet substitutions.
             vs_print(OK, f"Created {main_module} project build directory.")
