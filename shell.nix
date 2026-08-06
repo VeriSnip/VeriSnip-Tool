@@ -17,7 +17,7 @@ pkgs.mkShell {
     virtualenv .venv
     source .venv/bin/activate
     pip install --upgrade pip setuptools wheel
-    pip install -e .  # install your package in editable mode
+    pip install -e ".[test]"  # install your package in editable mode with test dependencies
   '';
 }
 
