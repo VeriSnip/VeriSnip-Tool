@@ -59,7 +59,7 @@ class VsBuilder:
             generated_files = move_generated_files()
             for file in generated_files:
                 basename = os.path.basename(file)
-                if basename == self.name or basename == self.name+".v" or basename == self.name+"sv":
+                if basename == self.name or basename == self.name+".v" or basename == self.name+".sv":
                     self.directory = file
 
             if generated_files == []:
@@ -137,9 +137,9 @@ class VsBuilder:
                         snippet_files.append(fpath)
 
         # Deduplicate and sort for stable output
-        self.script_files = sorted(set[Any](script_files))
-        self.verilog_files = sorted(set[Any](verilog_files))
-        self.snippet_files = sorted(set[Any](snippet_files))
+        self.script_files = sorted(set(script_files))
+        self.verilog_files = sorted(set(verilog_files))
+        self.snippet_files = sorted(set(snippet_files))
 
         vs_print(DEBUG, f"Found ({len(self.verilog_files)}) verilog files:")
         for file_path in self.verilog_files:
@@ -200,8 +200,8 @@ class VsBuilder:
         """
         pending = [self.VsSource(top_module)]
         deferred = {}
-        scanned = set[Any]()
-        sources_directories = set[Any]()
+        scanned = set()
+        sources_directories = set()
 
         while pending:
             source = pending.pop(0)
@@ -225,13 +225,13 @@ class VsBuilder:
                 sources_directories.add(source.directory)
                 pending.extend(self._scan_source_dependencies(source))
                 if not pending:
-                    vs_print(DEBUG, f"Retrying deferred sources: {list[Any](deferred.keys())}")
+                    vs_print(DEBUG, f"Retrying deferred sources: {list(deferred.keys())}")
                     pending.extend(self._retry_deferred_sources(deferred))
             else:
                 deferred[source.name] = source
         
         if deferred:
-            vs_print(WARNING, f"The following sources could not be located or generated: {list[Any](deferred.keys())}")
+            vs_print(WARNING, f"The following sources could not be located or generated: {list(deferred.keys())}")
         
         return sorted(sources_directories)
     
@@ -239,9 +239,9 @@ class VsBuilder:
         """
         This function retries to locate the sources that were deferred.
         """
-        resolved = list[self.VsSource]()
+        resolved = []
         file_list = self.snippet_files + self.verilog_files
-        for name, source in list[Any](deferred.items()):
+        for name, source in list(deferred.items()):
             source.locate_src(file_list)
             if source.directory:
                 del deferred[name]
