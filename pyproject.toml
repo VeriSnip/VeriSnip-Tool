@@ -27,4 +27,4 @@ Homepage = "https://github.com/VeriSnip/VeriSnip-Tool.git"
 Issues = "https://github.com/VeriSnip/VeriSnip-Tool/issues"
 
 [project.scripts]
-vs_build = "VeriSnip.vs_build:main"
+vs_build = "VeriSnip.vs_cli:main"
