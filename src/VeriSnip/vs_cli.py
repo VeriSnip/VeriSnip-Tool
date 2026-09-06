@@ -6,14 +6,25 @@ import os
 import re
 import subprocess
 import sys
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 from .vs_build import VsBuilder, clean_build
 from .vs_colours import INFO, OK, ERROR, DEBUG, vs_print
 
 
+def get_version() -> str:
+    """Return the installed VeriSnip package version, or 'unknown' if not installed."""
+    try:
+        return _pkg_version("VeriSnip")
+    except PackageNotFoundError:
+        return "unknown"
+
+
 def build_parser():
+    version = get_version()
     description = (
-        "VeriSnip (VS) version 0.0.4\n"
+        f"VeriSnip (VS) version {version}\n"
         "Create a build directory containing all the compiled hardware."
     )
     epilog = (
@@ -52,6 +63,11 @@ def build_parser():
         dest="post_build",
         help="Path to script executed after a successful build. Defaults to a "
         "post_build.* file in the working directory, if one exists.",
+    )
+    parser.add_argument(
+        "-V", "--version",
+        action="version",
+        version=f"vs_build {version}",
     )
     parser.add_argument("--clean", action="store_true", dest="clean", help="Remove build and generated directories.")
     parser.add_argument("--quiet", action="store_true", help="Suppresses INFO, WARNING, NOTE, and DEBUG prints.")
@@ -127,14 +143,29 @@ def parse_arguments():
             for b in board_modules
         ]
 
+    current_directory = os.getcwd()
+    pre_build_script = parsed_args.pre_build
+    post_build_script = parsed_args.post_build
+    if pre_build_script is None:
+        pre_build_script = find_default_script(current_directory, "pre_build")
+    if post_build_script is None:
+        post_build_script = find_default_script(current_directory, "post_build")
+
+    if pre_build_script and not os.path.isfile(pre_build_script):
+        vs_print(ERROR, f"Pre-build script does not exist: {pre_build_script}")
+        sys.exit(1)
+    if post_build_script and not os.path.isfile(post_build_script):
+        vs_print(ERROR, f"Post-build script does not exist: {post_build_script}")
+        sys.exit(1)
+
     return (
         module_name,
         testbench_name,
         board_modules,
         include_directories,
         parsed_args.clean,
-        parsed_args.pre_build,
-        parsed_args.post_build,
+        pre_build_script,
+        post_build_script,
     )
 
 
@@ -201,19 +232,7 @@ def main():
     if clean:
         clean_build(current_directory)
 
-    if pre_build_script is None:
-        pre_build_script = find_default_script(current_directory, "pre_build")
-    if post_build_script is None:
-        post_build_script = find_default_script(current_directory, "post_build")
-
-    if pre_build_script and not os.path.isfile(pre_build_script):
-        vs_print(ERROR, f"Pre-build script does not exist: {pre_build_script}")
-        sys.exit(1)
-    if post_build_script and not os.path.isfile(post_build_script):
-        vs_print(ERROR, f"Post-build script does not exist: {post_build_script}")
-        sys.exit(1)
-
-    current_stage = "build"
+    current_stage = "Undefined"
     try:
         if pre_build_script:
             current_stage = "pre-build"

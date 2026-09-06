@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 from .vs_colours import INFO, OK, WARNING, NOTE, ERROR, DEBUG, CRITICAL, vs_print
-from .vs_snippet_substitute import locate_file_in_list, substitute_vs_file
+from .vs_substitute import locate_file_in_list, substitute_vs_file
 
 class VsBuilder:
     _RE_MOD_INST = re.compile(r"\n\s*?(\w+?)\s+?(?:#\((?:[\s\S]*?)\))?\s*?(?:\w+?)\s*?\(\s*?(?:\.\w+?\s*?\([\s\S]*?)\);")
@@ -37,6 +37,7 @@ class VsBuilder:
             script_directory, file_suffix = self._find_script(script_files)
 
             if script_directory != "":
+                pre_existing_files = set(os.listdir(os.getcwd()))
                 try:
                     script_arguments = [
                         script_directory,
@@ -54,8 +55,8 @@ class VsBuilder:
             else:
                 vs_print(CRITICAL, f"Failed to generate '{self.name}': no script found.")
                 return []
-                
-            generated_files = move_generated_files()
+
+            generated_files = move_generated_files(exclude=pre_existing_files)
             for file in generated_files:
                 basename = os.path.basename(file)
                 if basename == self.name or basename == self.name+".v" or basename == self.name+".sv":
@@ -370,13 +371,21 @@ def relative_path(path: str) -> str:
     return os.path.relpath(path, start=os.getcwd())
 
 
-def move_generated_files():
+def move_generated_files(exclude=None):
+    """Moves newly generated Verilog/VeriSnip files from the cwd into the 'generated' directory.
+
+    Files whose names appear in `exclude` are left in place, so files that already existed
+    in the root before the generating script ran are not swept up as "generated".
+    """
     supported_extensions = [".v", ".vh", ".sv", ".svh", ".vs"]
+    exclude = exclude or set()
     new_files = []
     cwd = os.getcwd()
     generated_dir = os.path.join(cwd, "generated")
 
     for filename in os.listdir(cwd):
+        if filename in exclude:
+            continue
         _, extension = os.path.splitext(filename)
         file_dst_path = os.path.join(generated_dir, filename)
         file_src_path = os.path.join(cwd, filename)

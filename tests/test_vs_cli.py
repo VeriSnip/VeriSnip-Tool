@@ -122,7 +122,10 @@ def test_extra_positional_args_are_left_for_forwarding(monkeypatch):
     assert "EXTRA_FLAG=1" in sys.argv
 
 
-def test_clean_and_pre_post_build_flags_are_returned(monkeypatch):
+def test_clean_and_pre_post_build_flags_are_returned(monkeypatch, tmp_path):
+    (tmp_path / "setup.sh").touch()
+    (tmp_path / "cleanup.sh").touch()
+    monkeypatch.chdir(tmp_path)
     (
         _,
         _,
@@ -138,6 +141,14 @@ def test_clean_and_pre_post_build_flags_are_returned(monkeypatch):
     assert clean is True
     assert pre_build == "setup.sh"
     assert post_build == "cleanup.sh"
+
+
+def test_parse_arguments_exits_when_explicit_pre_build_script_missing(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["vs_build", "top", "--pre-build", "missing.sh"])
+    with pytest.raises(SystemExit) as excinfo:
+        vs_cli.parse_arguments()
+    assert excinfo.value.code == 1
 
 
 def test_pre_post_build_default_to_none_when_omitted(monkeypatch):

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from VeriSnip.vs_snippet_substitute import (
+from VeriSnip.vs_substitute import (
     locate_file_in_list,
     strip_trailing_commas_in_module_headers,
     substitute_vs_file,
