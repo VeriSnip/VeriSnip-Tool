@@ -67,7 +67,7 @@ def build_parser():
     parser.add_argument(
         "-V", "--version",
         action="version",
-        version=f"vs_build {version}",
+        version=f"VeriSnip version {version}!",
     )
     parser.add_argument("--clean", action="store_true", dest="clean", help="Remove build and generated directories.")
     parser.add_argument("--quiet", action="store_true", help="Suppresses INFO, WARNING, NOTE, and DEBUG prints.")
