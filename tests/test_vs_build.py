@@ -202,3 +202,43 @@ def test_clean_build_removes_build_and_generated_dirs(tmp_path: Path):
 
 def test_clean_build_noop_when_nothing_to_clean(tmp_path: Path):
     clean_build(str(tmp_path))  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# _collect_dependency_tree: deferred-source retry
+# ---------------------------------------------------------------------------
+
+def test_collect_dependency_tree_retries_deferred_source_after_sibling_generation(
+    tmp_path: Path, monkeypatch
+):
+    """`b.vs` is referenced before `a.vs` and has no script of its own, so it
+    is deferred on first attempt. `a.vs`'s script generates both files as a
+    side effect; only the deferred-retry pass picks up the now-available
+    `b.vs` (it never gets its own successful generate() call)."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "top.v").write_text(
+        "module top;\n"
+        "  `include \"b.vs\"\n"
+        "  `include \"a.vs\"\n"
+        "endmodule\n",
+        encoding="utf-8",
+    )
+    script = tmp_path / "a.py"
+    script.write_text(
+        "#!/usr/bin/env python3\n"
+        "with open('a.vs', 'w') as f:\n"
+        "    f.write('  wire a_ok;\\n')\n"
+        "with open('b.vs', 'w') as f:\n"
+        "    f.write('  wire b_ok;\\n')\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+
+    builder = VsBuilder("top", None, [], [])
+    create_directory(str(tmp_path / "generated"))  # normally done by resolve_sources()
+
+    sources = builder._collect_dependency_tree("top")
+
+    assert {os.path.basename(p) for p in sources} == {"top.v", "a.vs", "b.vs"}
+    assert (tmp_path / "generated" / "a.vs").is_file()
+    assert (tmp_path / "generated" / "b.vs").is_file()

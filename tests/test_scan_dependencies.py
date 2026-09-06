@@ -1,3 +1,4 @@
+import sys
 import tempfile
 from pathlib import Path
 
@@ -65,3 +66,28 @@ endmodule
 
     with pytest.raises(SystemExit):
         builder._collect_dependency_tree("top")
+
+
+def test_locate_or_generate_source_skips_generation_when_vs_no_generate(tmp_path: Path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["vs_build", "--debug"])
+    builder = VsBuilder("top", None, [], [])
+    source = VsBuilder.VsSource("missing.vs")
+    source.comment = "VS_NO_GENERATE"
+
+    result = builder._locate_or_generate_source(source)
+
+    assert result is False
+    assert source.directory == ""
+    assert "Skipping generation" in capsys.readouterr().out
+
+
+def test_scan_source_dependencies_exits_when_source_unresolved(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    builder = VsBuilder("top", None, [], [])
+    source = VsBuilder.VsSource("missing")  # source.directory left as "" (never located/generated)
+
+    with pytest.raises(SystemExit) as excinfo:
+        builder._scan_source_dependencies(source)
+
+    assert excinfo.value.code == 1
