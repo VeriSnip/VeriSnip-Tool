@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from VeriSnip.vs_snippet_substitute import (
+    locate_file_in_list,
     strip_trailing_commas_in_module_headers,
     substitute_vs_file,
 )
@@ -157,3 +158,80 @@ endmodule
     )
     assert "wire generated_ok;" in result
     assert '`include "body.vs"' not in result
+
+
+def test_missing_snippet_leaves_warning_comment_in_output(tmp_path: Path):
+    result = _write_and_substitute(
+        tmp_path,
+        """\
+module top;
+  `include "missing.vs"
+endmodule
+""",
+        {},
+    )
+    assert "does not exist to substitute" in result
+    assert '`include "missing.vs"' not in result
+
+
+def test_block_comment_config_after_include_is_stripped_from_output(tmp_path: Path):
+    result = _write_and_substitute(
+        tmp_path,
+        """\
+module top;
+  `include "body.vs" /*
+    WIDTH=8
+  */
+endmodule
+""",
+        {"body.vs": "  wire generated_ok;\n"},
+    )
+    assert "wire generated_ok;" in result
+    assert "WIDTH=8" not in result
+    assert "*/" not in result
+
+
+def test_nested_vs_include_is_recursively_inlined(tmp_path: Path):
+    result = _write_and_substitute(
+        tmp_path,
+        """\
+module top;
+  `include "outer.vs"
+endmodule
+""",
+        {
+            "outer.vs": '  `include "inner.vs"\n',
+            "inner.vs": "  wire inner_ok;\n",
+        },
+    )
+    assert "wire inner_ok;" in result
+    assert '`include "inner.vs"' not in result
+    assert '`include "outer.vs"' not in result
+
+
+# ---------------------------------------------------------------------------
+# locate_file_in_list
+# ---------------------------------------------------------------------------
+
+def test_locate_file_in_list_exact_match():
+    files = ["/a/widget.vs", "/a/other.vs"]
+    assert locate_file_in_list("widget.vs", files) == "/a/widget.vs"
+
+
+def test_locate_file_in_list_matches_v_suffix():
+    assert locate_file_in_list("top", ["/a/top.v"]) == "/a/top.v"
+
+
+def test_locate_file_in_list_matches_sv_suffix():
+    assert locate_file_in_list("top", ["/a/top.sv"]) == "/a/top.sv"
+
+
+def test_locate_file_in_list_no_match_returns_empty_string():
+    assert locate_file_in_list("missing.vs", ["/a/widget.vs"]) == ""
+
+
+def test_locate_file_in_list_warns_on_duplicate_and_returns_last_match(capsys):
+    result = locate_file_in_list("top.vs", ["/a/top.vs", "/b/top.vs"])
+
+    assert result == "/b/top.vs"
+    assert "more than one directory" in capsys.readouterr().out
