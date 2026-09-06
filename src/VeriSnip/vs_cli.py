@@ -1,6 +1,7 @@
 """Command-line entry point for vs_build: argument parsing and top-level orchestration."""
 
 import argparse
+import glob
 import os
 import re
 import subprocess
@@ -40,8 +41,18 @@ def build_parser():
     parser.add_argument("--TestBench", dest="testbench_name", help="Testbench module name.")
     parser.add_argument("--Boards", dest="boards", default="", help="Space-separated list of board top modules.")
     parser.add_argument("--inc_dir", dest="include_dirs", default="", help="Space-separated list of include directories.")
-    parser.add_argument("--pre-build", dest="pre_build", help="Path to script executed before build.")
-    parser.add_argument("--post-build", dest="post_build", help="Path to script executed after a successful build.")
+    parser.add_argument(
+        "--pre-build",
+        dest="pre_build",
+        help="Path to script executed before build. Defaults to a pre_build.* file "
+        "in the working directory, if one exists.",
+    )
+    parser.add_argument(
+        "--post-build",
+        dest="post_build",
+        help="Path to script executed after a successful build. Defaults to a "
+        "post_build.* file in the working directory, if one exists.",
+    )
     parser.add_argument("--clean", action="store_true", dest="clean", help="Remove build and generated directories.")
     parser.add_argument("--quiet", action="store_true", help="Suppresses INFO, WARNING, NOTE, and DEBUG prints.")
     parser.add_argument("--debug", action="store_true", help="Enables DEBUG prints.")
@@ -127,6 +138,18 @@ def parse_arguments():
     )
 
 
+def find_default_script(directory: str, stem: str) -> "str | None":
+    """Return the path to a `<stem>.*` file in `directory`, if exactly one exists."""
+    candidates = sorted(
+        path for path in glob.glob(os.path.join(directory, f"{stem}.*"))
+        if os.path.isfile(path)
+    )
+    if len(candidates) > 1:
+        vs_print(ERROR, f"Multiple default {stem}.* scripts found: {', '.join(candidates)}")
+        sys.exit(1)
+    return candidates[0] if candidates else None
+
+
 def run_script(path: str, stage: str) -> None:
     vs_print(INFO, f"Running {stage} script...")
 
@@ -177,6 +200,11 @@ def main():
 
     if clean:
         clean_build(current_directory)
+
+    if pre_build_script is None:
+        pre_build_script = find_default_script(current_directory, "pre_build")
+    if post_build_script is None:
+        post_build_script = find_default_script(current_directory, "post_build")
 
     if pre_build_script and not os.path.isfile(pre_build_script):
         vs_print(ERROR, f"Pre-build script does not exist: {pre_build_script}")
