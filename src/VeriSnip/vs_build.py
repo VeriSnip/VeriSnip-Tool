@@ -326,7 +326,7 @@ class VsBuilder:
         build_verilog_sources(self.rtl_sources, build_dir+"/RTL")
         build_verilog_sources(self.testbench_sources, build_dir+"/TestBench")
         for board in self.board_modules:
-            build_verilog_sources(self.board_sources[board], build_dir+"/"+board)
+            build_verilog_sources(self.board_sources[board], build_dir+"/FPGA")
         pass
 
 
